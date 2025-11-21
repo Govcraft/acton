@@ -2,6 +2,9 @@
 //!
 //! Provides axum extractors for accessing session data and flash messages
 //! within request handlers.
+//!
+//! The session data is placed in request extensions by `SessionMiddleware`.
+//! Flash messages can be consumed (cleared after read) via `FlashExtractor`.
 
 use crate::auth::session::{FlashMessage, SessionData, SessionId};
 use axum::{
@@ -54,8 +57,14 @@ where
 
 /// Extractor for flash messages
 ///
-/// Extracts flash messages from the session, consuming them.
-/// Messages are typically shown once and then cleared.
+/// Extracts flash messages from the session and clears them from the session data.
+/// Messages are typically shown once and then cleared (flash = one-time display).
+///
+/// # Note
+///
+/// This extractor takes the flash messages from the session data in extensions,
+/// clearing them so they won't be persisted back. The middleware will save the
+/// modified session data (without the flashes) on response.
 ///
 /// # Example
 ///
@@ -64,7 +73,7 @@ where
 ///
 /// async fn handler(FlashExtractor(messages): FlashExtractor) {
 ///     for msg in messages {
-///         println!("Flash: {} - {}", msg.level, msg.content);
+///         println!("Flash: {:?} - {}", msg.level, msg.message);
 ///     }
 /// }
 /// ```
@@ -78,15 +87,12 @@ where
     type Rejection = Infallible;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        // Get flash messages from session data in extensions
+        // Take flash messages from session data in extensions (clears them)
         let messages = parts
             .extensions
-            .get::<SessionData>()
-            .map(|session| session.flash_messages.clone())
+            .get_mut::<SessionData>()
+            .map(|session| std::mem::take(&mut session.flash_messages))
             .unwrap_or_default();
-
-        // TODO: Clear flash messages from session after extraction
-        // This requires mutable access or a separate mechanism
 
         Ok(Self(messages))
     }

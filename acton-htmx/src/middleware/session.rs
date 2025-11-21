@@ -1,11 +1,13 @@
 //! Session middleware for automatic session management
 //!
 //! Provides middleware that handles session cookie extraction, validation,
-//! and persistence across requests.
+//! and persistence across requests. Integrates with the `SessionManagerAgent`
+//! for session storage.
 
-#![allow(dead_code)]
-
+use crate::agents::{LoadSessionRequest, SaveSessionRequest};
 use crate::auth::session::{SessionData, SessionId};
+use crate::state::ActonHtmxState;
+use acton_reactive::prelude::{AgentHandle, AgentHandleInterface};
 use axum::{
     body::Body,
     extract::Request,
@@ -13,7 +15,9 @@ use axum::{
     response::Response,
 };
 use std::str::FromStr;
+use std::sync::Arc;
 use std::task::{Context, Poll};
+use std::time::Duration;
 use tower::{Layer, Service};
 
 /// Session cookie name
@@ -34,6 +38,8 @@ pub struct SessionConfig {
     pub same_site: SameSite,
     /// Session TTL in seconds
     pub max_age_secs: u64,
+    /// Timeout for agent communication in milliseconds
+    pub agent_timeout_ms: u64,
 }
 
 impl Default for SessionConfig {
@@ -45,6 +51,7 @@ impl Default for SessionConfig {
             secure: !cfg!(debug_assertions),
             same_site: SameSite::Lax,
             max_age_secs: 86400, // 24 hours
+            agent_timeout_ms: 100,
         }
     }
 }
@@ -74,30 +81,50 @@ impl SameSite {
 }
 
 /// Layer for session middleware
-#[derive(Clone, Debug)]
+///
+/// Requires `ActonHtmxState` to be present in the request extensions,
+/// typically added via `.with_state()`.
+#[derive(Clone)]
 pub struct SessionLayer {
     config: SessionConfig,
+    session_manager: AgentHandle,
+}
+
+impl std::fmt::Debug for SessionLayer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SessionLayer")
+            .field("config", &self.config)
+            .field("session_manager", &"AgentHandle")
+            .finish()
+    }
 }
 
 impl SessionLayer {
-    /// Create new session layer with default configuration
+    /// Create new session layer with session manager from state
     #[must_use]
-    pub fn new() -> Self {
+    pub fn new(state: &ActonHtmxState) -> Self {
         Self {
             config: SessionConfig::default(),
+            session_manager: state.session_manager().clone(),
         }
     }
 
     /// Create session layer with custom configuration
     #[must_use]
-    pub const fn with_config(config: SessionConfig) -> Self {
-        Self { config }
+    pub fn with_config(state: &ActonHtmxState, config: SessionConfig) -> Self {
+        Self {
+            config,
+            session_manager: state.session_manager().clone(),
+        }
     }
-}
 
-impl Default for SessionLayer {
-    fn default() -> Self {
-        Self::new()
+    /// Create session layer from an existing agent handle
+    #[must_use]
+    pub fn from_handle(session_manager: AgentHandle) -> Self {
+        Self {
+            config: SessionConfig::default(),
+            session_manager,
+        }
     }
 }
 
@@ -107,16 +134,31 @@ impl<S> Layer<S> for SessionLayer {
     fn layer(&self, inner: S) -> Self::Service {
         SessionMiddleware {
             inner,
-            config: self.config.clone(),
+            config: Arc::new(self.config.clone()),
+            session_manager: self.session_manager.clone(),
         }
     }
 }
 
 /// Session middleware that handles cookie-based sessions
-#[derive(Clone, Debug)]
+///
+/// Automatically loads sessions from the `SessionManagerAgent` on request
+/// and saves modified sessions on response.
+#[derive(Clone)]
 pub struct SessionMiddleware<S> {
     inner: S,
-    config: SessionConfig,
+    config: Arc<SessionConfig>,
+    session_manager: AgentHandle,
+}
+
+impl<S: std::fmt::Debug> std::fmt::Debug for SessionMiddleware<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SessionMiddleware")
+            .field("inner", &self.inner)
+            .field("config", &self.config)
+            .field("session_manager", &"AgentHandle")
+            .finish()
+    }
 }
 
 impl<S> Service<Request> for SessionMiddleware<S>
@@ -136,34 +178,58 @@ where
 
     fn call(&mut self, mut req: Request) -> Self::Future {
         let config = self.config.clone();
+        let session_manager = self.session_manager.clone();
         let mut inner = self.inner.clone();
+        let timeout = Duration::from_millis(config.agent_timeout_ms);
 
         Box::pin(async move {
             // Extract session ID from cookie
-            let session_id = extract_session_id(&req, &config.cookie_name);
+            let existing_session_id = extract_session_id(&req, &config.cookie_name);
 
-            // Create or load session
-            let (session_id, session_data, is_new) = session_id.map_or_else(
-                || {
-                    // Generate new session
+            // Load or create session
+            let (session_id, session_data, is_new) = match existing_session_id {
+                Some(id) => {
+                    // Try to load existing session from agent
+                    let (request, rx) = LoadSessionRequest::new(id.clone());
+                    session_manager.send(request).await;
+
+                    // Wait for response with timeout
+                    match tokio::time::timeout(timeout, rx).await {
+                        Ok(Ok(Some(data))) => (id, data, false),
+                        _ => {
+                            // Session not found or timeout - create new session
+                            let new_id = SessionId::generate();
+                            (new_id, SessionData::new(), true)
+                        }
+                    }
+                }
+                None => {
+                    // No session cookie - create new session
                     let id = SessionId::generate();
                     (id, SessionData::new(), true)
-                },
-                |id| {
-                    // TODO: Load from SessionManagerAgent
-                    // For now, create new session data
-                    (id, SessionData::new(), false)
-                },
-            );
+                }
+            };
 
             // Insert session into request extensions for handlers to access
             req.extensions_mut().insert(session_id.clone());
-            req.extensions_mut().insert(session_data);
+            req.extensions_mut().insert(session_data.clone());
 
             // Call inner service
             let mut response = inner.call(req).await?;
 
-            // Set session cookie if new or modified
+            // Get potentially modified session data from response extensions
+            // (handlers can modify it via SessionExtractor)
+            let final_session_data = response
+                .extensions()
+                .get::<SessionData>()
+                .cloned()
+                .unwrap_or(session_data);
+
+            // Save session to agent (fire-and-forget for performance)
+            let save_request = SaveSessionRequest::new(session_id.clone(), final_session_data);
+            session_manager.send(save_request).await;
+
+            // Set session cookie if new
             if is_new {
                 set_session_cookie(&mut response, &session_id, &config);
             }
@@ -192,7 +258,11 @@ fn extract_session_id(req: &Request, cookie_name: &str) -> Option<SessionId> {
 }
 
 /// Set session cookie on response
-fn set_session_cookie(response: &mut Response<Body>, session_id: &SessionId, config: &SessionConfig) {
+fn set_session_cookie(
+    response: &mut Response<Body>,
+    session_id: &SessionId,
+    config: &SessionConfig,
+) {
     let mut cookie_value = format!(
         "{}={}; Path={}; Max-Age={}; SameSite={}",
         config.cookie_name,

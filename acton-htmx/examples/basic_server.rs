@@ -3,12 +3,14 @@
 //! Demonstrates:
 //! - Configuration loading
 //! - Observability initialization
-//! - Application state creation
+//! - Application state creation with agent runtime
+//! - Session middleware integration
 //! - Basic HTMX handler
 //!
 //! Run with: `cargo run --example basic_server`
 
 use acton_htmx::{observability, prelude::*};
+use acton_reactive::prelude::ActonApp;
 use axum::{extract::State, routing::get, Router};
 
 #[tokio::main]
@@ -18,8 +20,11 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Starting acton-htmx basic server");
 
-    // Create application state
-    let state = ActonHtmxState::new()?;
+    // Launch the Acton runtime - keep ownership in main for shutdown orchestration
+    let mut runtime = ActonApp::launch();
+
+    // Create application state (spawns session manager agent)
+    let state = ActonHtmxState::new(&mut runtime).await?;
 
     tracing::info!(
         timeout_ms = state.config().htmx.request_timeout_ms,
@@ -27,10 +32,11 @@ async fn main() -> anyhow::Result<()> {
         "Configuration loaded"
     );
 
-    // Build router with HTMX routes
+    // Build router with HTMX routes and session middleware
     let app = Router::new()
         .route("/", get(index))
         .route("/about", get(about))
+        .layer(SessionLayer::new(&state))
         .with_state(state);
 
     // Start server
@@ -38,6 +44,9 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Server listening on http://127.0.0.1:3000");
 
     axum::serve(listener, app).await?;
+
+    // Shutdown the agent runtime after server stops
+    runtime.shutdown_all().await?;
 
     Ok(())
 }

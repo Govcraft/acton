@@ -163,13 +163,13 @@ pub fn hx_confirm(message: &str) -> String {
 /// ```
 #[must_use]
 pub fn hx_vals(json: &str) -> String {
-    format!(r#"hx-vals='{json}'"#)
+    format!(r"hx-vals='{json}'")
 }
 
 /// Generate hx-headers attribute for additional headers
 #[must_use]
 pub fn hx_headers(json: &str) -> String {
-    format!(r#"hx-headers='{json}'"#)
+    format!(r"hx-headers='{json}'")
 }
 
 /// Generate hx-push-url attribute

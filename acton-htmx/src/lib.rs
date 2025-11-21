@@ -16,20 +16,28 @@
 //!
 //! ```rust,no_run
 //! use acton_htmx::prelude::*;
+//! use acton_reactive::prelude::ActonApp;
 //!
 //! #[tokio::main]
 //! async fn main() -> anyhow::Result<()> {
-//!     // Initialize application state
-//!     let state = ActonHtmxState::new()?;
+//!     // Launch the Acton runtime
+//!     let mut runtime = ActonApp::launch();
 //!
-//!     // Build router with HTMX handlers
+//!     // Initialize application state (spawns session manager agent)
+//!     let state = ActonHtmxState::new(&mut runtime).await?;
+//!
+//!     // Build router with HTMX handlers and session middleware
 //!     let app = axum::Router::new()
 //!         .route("/", axum::routing::get(index))
+//!         .layer(SessionLayer::new(&state))
 //!         .with_state(state);
 //!
 //!     // Start server
 //!     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
 //!     axum::serve(listener, app).await?;
+//!
+//!     // Shutdown the agent runtime
+//!     runtime.shutdown_all().await?;
 //!
 //!     Ok(())
 //! }
@@ -69,11 +77,13 @@ pub mod template;
 // Public modules for actors and agents
 pub mod agents;
 
+// Public middleware module (needed for session layer)
+pub mod middleware;
+
 // Internal modules (not re-exported, implementation details)
 mod cache;
 mod database;
 mod health;
-mod middleware;
 mod security;
 
 #[cfg(test)]
@@ -139,6 +149,9 @@ pub mod prelude {
 
     // Application state
     pub use crate::state::ActonHtmxState;
+
+    // Session middleware
+    pub use crate::middleware::{SessionConfig, SessionLayer};
 
     // Re-export key dependencies
     pub use askama;

@@ -12,6 +12,7 @@
 //! ```
 
 use acton_htmx::{observability, state::ActonHtmxState};
+use acton_reactive::prelude::ActonApp;
 use axum::{
     response::Html,
     routing::{get, post},
@@ -26,8 +27,11 @@ async fn main() -> anyhow::Result<()> {
     // Initialize observability
     observability::init()?;
 
+    // Launch the Acton runtime
+    let mut runtime = ActonApp::launch();
+
     // Create application state
-    let state = ActonHtmxState::new()?;
+    let state = ActonHtmxState::new(&mut runtime).await?;
 
     // Build router
     let app = Router::new()
@@ -43,6 +47,9 @@ async fn main() -> anyhow::Result<()> {
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
     axum::serve(listener, app).await?;
+
+    // Shutdown the agent runtime
+    runtime.shutdown_all().await?;
 
     Ok(())
 }
