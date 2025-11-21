@@ -114,17 +114,9 @@ impl Default for PasswordHashConfig {
 ///
 /// Provides secure password hashing with configurable parameters.
 /// All methods are constant-time to prevent timing attacks.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct PasswordHasher {
     config: PasswordHashConfig,
-}
-
-impl Default for PasswordHasher {
-    fn default() -> Self {
-        Self {
-            config: PasswordHashConfig::default(),
-        }
-    }
 }
 
 impl PasswordHasher {

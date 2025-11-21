@@ -3,6 +3,8 @@
 //! Renders form builders to HTML strings with proper escaping
 //! and validation error display.
 
+use std::fmt::Write;
+
 use super::builder::FormBuilder;
 use super::field::{FieldKind, FormField, InputType};
 
@@ -87,11 +89,11 @@ impl FormRenderer {
 
         // CSRF token
         if let Some(ref token) = form.csrf_token {
-            html.push_str(&format!(
-                r#"  <input type="hidden" name="_csrf_token" value="{}">{}"#,
-                Self::escape_attr(token),
-                "\n"
-            ));
+            let _ = writeln!(
+                html,
+                r#"  <input type="hidden" name="_csrf_token" value="{}">"#,
+                Self::escape_attr(token)
+            );
         }
 
         // hx-validate attribute if enabled
@@ -111,12 +113,12 @@ impl FormRenderer {
                 .submit_class
                 .as_deref()
                 .unwrap_or(&options.submit_class);
-            html.push_str(&format!(
-                r#"  <button type="submit" class="{}">{}</button>{}"#,
+            let _ = writeln!(
+                html,
+                r#"  <button type="submit" class="{}">{}</button>"#,
                 Self::escape_attr(submit_class),
-                Self::escape_html(text),
-                "\n"
-            ));
+                Self::escape_html(text)
+            );
         }
 
         html.push_str("</form>");
@@ -129,33 +131,32 @@ impl FormRenderer {
         options: &FormRenderOptions,
     ) -> String {
         let mut html = String::with_capacity(256);
-        let field_errors = errors.map(|e| e.for_field(&field.name)).unwrap_or(&[]);
+        let field_errors = errors.as_ref().map_or_else(<&[_]>::default, |e| e.for_field(&field.name));
         let has_errors = !field_errors.is_empty();
 
         // Open wrapper if enabled (skip for hidden fields)
         let is_hidden = matches!(field.kind, FieldKind::Input(InputType::Hidden));
         if options.wrap_fields && !is_hidden {
-            html.push_str(&format!(r#"  <div class="{}">"#, options.group_class));
-            html.push('\n');
+            let _ = writeln!(html, r#"  <div class="{}">"#, options.group_class);
         }
 
         // Label (skip for hidden and checkbox - checkbox label comes after input)
         let is_checkbox = matches!(field.kind, FieldKind::Checkbox { .. });
         if let Some(ref label) = field.label {
             if !is_hidden && !is_checkbox {
-                html.push_str(&format!(
-                    r#"    <label for="{}" class="{}">{}</label>{}"#,
+                let _ = writeln!(
+                    html,
+                    r#"    <label for="{}" class="{}">{}</label>"#,
                     Self::escape_attr(field.effective_id()),
                     options.label_class,
-                    Self::escape_html(label),
-                    "\n"
-                ));
+                    Self::escape_html(label)
+                );
             }
         }
 
         // Render the actual input element
         let input_html = match &field.kind {
-            FieldKind::Input(input_type) => Self::render_input(field, input_type, has_errors, options),
+            FieldKind::Input(input_type) => Self::render_input(field, *input_type, has_errors, options),
             FieldKind::Textarea { rows, cols } => {
                 Self::render_textarea(field, *rows, *cols, has_errors, options)
             }
@@ -174,34 +175,35 @@ impl FormRenderer {
         // Checkbox label comes after input
         if is_checkbox {
             if let Some(ref label) = field.label {
-                html.push_str(&format!(
+                let _ = write!(
+                    html,
                     r#" <label for="{}" class="{}">{}</label>"#,
                     Self::escape_attr(field.effective_id()),
                     options.label_class,
-                    Self::escape_html(label),
-                ));
+                    Self::escape_html(label)
+                );
             }
             html.push('\n');
         }
 
         // Field errors
         for error in field_errors {
-            html.push_str(&format!(
-                r#"    <span class="{}">{}</span>{}"#,
+            let _ = writeln!(
+                html,
+                r#"    <span class="{}">{}</span>"#,
                 options.error_class,
-                Self::escape_html(&error.message),
-                "\n"
-            ));
+                Self::escape_html(&error.message)
+            );
         }
 
         // Help text
         if let Some(ref help) = field.help_text {
-            html.push_str(&format!(
-                r#"    <span class="{}">{}</span>{}"#,
+            let _ = writeln!(
+                html,
+                r#"    <span class="{}">{}</span>"#,
                 options.help_class,
-                Self::escape_html(help),
-                "\n"
-            ));
+                Self::escape_html(help)
+            );
         }
 
         // Close wrapper
@@ -214,14 +216,14 @@ impl FormRenderer {
 
     fn render_input(
         field: &FormField,
-        input_type: &InputType,
+        input_type: InputType,
         has_errors: bool,
         options: &FormRenderOptions,
     ) -> String {
         let mut html = String::with_capacity(128);
 
         // Hidden fields don't need wrapper indentation
-        let indent = if *input_type == InputType::Hidden {
+        let indent = if input_type == InputType::Hidden {
             "  "
         } else {
             "    "
@@ -245,16 +247,16 @@ impl FormRenderer {
         if let Some(ref placeholder) = field.placeholder {
             Self::write_attr(&mut html, "placeholder", placeholder);
         }
-        if field.required {
+        if field.flags.required {
             html.push_str(" required");
         }
-        if field.disabled {
+        if field.flags.disabled {
             html.push_str(" disabled");
         }
-        if field.readonly {
+        if field.flags.readonly {
             html.push_str(" readonly");
         }
-        if field.autofocus {
+        if field.flags.autofocus {
             html.push_str(" autofocus");
         }
         if let Some(ref autocomplete) = field.autocomplete {
@@ -323,13 +325,13 @@ impl FormRenderer {
         if let Some(c) = cols {
             Self::write_attr(&mut html, "cols", &c.to_string());
         }
-        if field.required {
+        if field.flags.required {
             html.push_str(" required");
         }
-        if field.disabled {
+        if field.flags.disabled {
             html.push_str(" disabled");
         }
-        if field.readonly {
+        if field.flags.readonly {
             html.push_str(" readonly");
         }
 
@@ -364,10 +366,10 @@ impl FormRenderer {
         if multiple {
             html.push_str(" multiple");
         }
-        if field.required {
+        if field.flags.required {
             html.push_str(" required");
         }
-        if field.disabled {
+        if field.flags.disabled {
             html.push_str(" disabled");
         }
 
@@ -420,10 +422,10 @@ impl FormRenderer {
         if checked {
             html.push_str(" checked");
         }
-        if field.required {
+        if field.flags.required {
             html.push_str(" required");
         }
-        if field.disabled {
+        if field.flags.disabled {
             html.push_str(" disabled");
         }
 
@@ -459,15 +461,16 @@ impl FormRenderer {
             if opt.disabled {
                 html.push_str(" disabled");
             }
-            if field.required && i == 0 {
+            if field.flags.required && i == 0 {
                 html.push_str(" required");
             }
             html.push_str(">\n");
-            html.push_str(&format!(
-                "      <label for=\"{}\">{}</label>\n",
+            let _ = writeln!(
+                html,
+                "      <label for=\"{}\">{}</label>",
                 Self::escape_attr(&opt_id),
                 Self::escape_html(&opt.label)
-            ));
+            );
             html.push_str("    </div>\n");
         }
 

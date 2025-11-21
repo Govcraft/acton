@@ -178,7 +178,7 @@ impl ActonHtmxState {
     /// }
     /// ```
     #[must_use]
-    pub fn session_manager(&self) -> &AgentHandle {
+    pub const fn session_manager(&self) -> &AgentHandle {
         &self.session_manager
     }
 

@@ -187,27 +187,23 @@ where
             let existing_session_id = extract_session_id(&req, &config.cookie_name);
 
             // Load or create session
-            let (session_id, session_data, is_new) = match existing_session_id {
-                Some(id) => {
-                    // Try to load existing session from agent
-                    let (request, rx) = LoadSessionRequest::new(id.clone());
-                    session_manager.send(request).await;
+            let (session_id, session_data, is_new) = if let Some(id) = existing_session_id {
+                // Try to load existing session from agent
+                let (request, rx) = LoadSessionRequest::new(id.clone());
+                session_manager.send(request).await;
 
-                    // Wait for response with timeout
-                    match tokio::time::timeout(timeout, rx).await {
-                        Ok(Ok(Some(data))) => (id, data, false),
-                        _ => {
-                            // Session not found or timeout - create new session
-                            let new_id = SessionId::generate();
-                            (new_id, SessionData::new(), true)
-                        }
-                    }
+                // Wait for response with timeout
+                if let Ok(Ok(Some(data))) = tokio::time::timeout(timeout, rx).await {
+                    (id, data, false)
+                } else {
+                    // Session not found or timeout - create new session
+                    let new_id = SessionId::generate();
+                    (new_id, SessionData::new(), true)
                 }
-                None => {
-                    // No session cookie - create new session
-                    let id = SessionId::generate();
-                    (id, SessionData::new(), true)
-                }
+            } else {
+                // No session cookie - create new session
+                let id = SessionId::generate();
+                (id, SessionData::new(), true)
             };
 
             // Insert session into request extensions for handlers to access

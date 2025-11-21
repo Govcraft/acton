@@ -149,7 +149,7 @@ impl<'a> FormBuilder<'a> {
 
     /// Set validation errors to display
     #[must_use]
-    pub fn errors(mut self, errors: &'a ValidationErrors) -> Self {
+    pub const fn errors(mut self, errors: &'a ValidationErrors) -> Self {
         self.errors = Some(errors);
         self
     }
@@ -170,7 +170,7 @@ impl<'a> FormBuilder<'a> {
 
     /// Disable browser validation (add novalidate attribute)
     #[must_use]
-    pub fn novalidate(mut self) -> Self {
+    pub const fn novalidate(mut self) -> Self {
         self.novalidate = true;
         self
     }
@@ -272,7 +272,7 @@ impl<'a> FormBuilder<'a> {
 
     /// Enable hx-validate
     #[must_use]
-    pub fn htmx_validate(mut self) -> Self {
+    pub const fn htmx_validate(mut self) -> Self {
         self.htmx_validate = true;
         self
     }
@@ -339,7 +339,7 @@ pub struct FieldBuilder<'a> {
 }
 
 impl<'a> FieldBuilder<'a> {
-    fn new(form: FormBuilder<'a>, field: FormField) -> Self {
+    const fn new(form: FormBuilder<'a>, field: FormField) -> Self {
         Self { form, field }
     }
 
@@ -366,29 +366,29 @@ impl<'a> FieldBuilder<'a> {
 
     /// Mark field as required
     #[must_use]
-    pub fn required(mut self) -> Self {
-        self.field.required = true;
+    pub const fn required(mut self) -> Self {
+        self.field.flags.required = true;
         self
     }
 
     /// Mark field as disabled
     #[must_use]
-    pub fn disabled(mut self) -> Self {
-        self.field.disabled = true;
+    pub const fn disabled(mut self) -> Self {
+        self.field.flags.disabled = true;
         self
     }
 
     /// Mark field as readonly
     #[must_use]
-    pub fn readonly(mut self) -> Self {
-        self.field.readonly = true;
+    pub const fn readonly(mut self) -> Self {
+        self.field.flags.readonly = true;
         self
     }
 
     /// Enable autofocus
     #[must_use]
-    pub fn autofocus(mut self) -> Self {
-        self.field.autofocus = true;
+    pub const fn autofocus(mut self) -> Self {
+        self.field.flags.autofocus = true;
         self
     }
 
@@ -401,14 +401,14 @@ impl<'a> FieldBuilder<'a> {
 
     /// Set minimum length
     #[must_use]
-    pub fn min_length(mut self, len: usize) -> Self {
+    pub const fn min_length(mut self, len: usize) -> Self {
         self.field.min_length = Some(len);
         self
     }
 
     /// Set maximum length
     #[must_use]
-    pub fn max_length(mut self, len: usize) -> Self {
+    pub const fn max_length(mut self, len: usize) -> Self {
         self.field.max_length = Some(len);
         self
     }
@@ -531,7 +531,7 @@ pub struct TextareaBuilder<'a> {
 }
 
 impl<'a> TextareaBuilder<'a> {
-    fn new(form: FormBuilder<'a>, field: FormField) -> Self {
+    const fn new(form: FormBuilder<'a>, field: FormField) -> Self {
         Self { form, field }
     }
 
@@ -558,21 +558,21 @@ impl<'a> TextareaBuilder<'a> {
 
     /// Mark field as required
     #[must_use]
-    pub fn required(mut self) -> Self {
-        self.field.required = true;
+    pub const fn required(mut self) -> Self {
+        self.field.flags.required = true;
         self
     }
 
     /// Mark field as disabled
     #[must_use]
-    pub fn disabled(mut self) -> Self {
-        self.field.disabled = true;
+    pub const fn disabled(mut self) -> Self {
+        self.field.flags.disabled = true;
         self
     }
 
     /// Set number of rows
     #[must_use]
-    pub fn rows(mut self, rows: u32) -> Self {
+    pub const fn rows(mut self, rows: u32) -> Self {
         if let FieldKind::Textarea {
             rows: ref mut r, ..
         } = self.field.kind
@@ -584,7 +584,7 @@ impl<'a> TextareaBuilder<'a> {
 
     /// Set number of columns
     #[must_use]
-    pub fn cols(mut self, cols: u32) -> Self {
+    pub const fn cols(mut self, cols: u32) -> Self {
         if let FieldKind::Textarea {
             cols: ref mut c, ..
         } = self.field.kind
@@ -635,7 +635,7 @@ pub struct SelectBuilder<'a> {
 }
 
 impl<'a> SelectBuilder<'a> {
-    fn new(form: FormBuilder<'a>, field: FormField) -> Self {
+    const fn new(form: FormBuilder<'a>, field: FormField) -> Self {
         Self {
             form,
             field,
@@ -677,21 +677,21 @@ impl<'a> SelectBuilder<'a> {
 
     /// Mark field as required
     #[must_use]
-    pub fn required(mut self) -> Self {
-        self.field.required = true;
+    pub const fn required(mut self) -> Self {
+        self.field.flags.required = true;
         self
     }
 
     /// Mark field as disabled
     #[must_use]
-    pub fn disabled(mut self) -> Self {
-        self.field.disabled = true;
+    pub const fn disabled(mut self) -> Self {
+        self.field.flags.disabled = true;
         self
     }
 
     /// Allow multiple selections
     #[must_use]
-    pub fn multiple(mut self) -> Self {
+    pub const fn multiple(mut self) -> Self {
         if let FieldKind::Select {
             ref mut multiple, ..
         } = self.field.kind
@@ -736,7 +736,7 @@ pub struct CheckboxBuilder<'a> {
 }
 
 impl<'a> CheckboxBuilder<'a> {
-    fn new(form: FormBuilder<'a>, field: FormField) -> Self {
+    const fn new(form: FormBuilder<'a>, field: FormField) -> Self {
         Self { form, field }
     }
 
@@ -756,7 +756,7 @@ impl<'a> CheckboxBuilder<'a> {
 
     /// Set checkbox as checked
     #[must_use]
-    pub fn checked(mut self) -> Self {
+    pub const fn checked(mut self) -> Self {
         if let FieldKind::Checkbox {
             ref mut checked, ..
         } = self.field.kind
@@ -768,15 +768,15 @@ impl<'a> CheckboxBuilder<'a> {
 
     /// Mark field as required
     #[must_use]
-    pub fn required(mut self) -> Self {
-        self.field.required = true;
+    pub const fn required(mut self) -> Self {
+        self.field.flags.required = true;
         self
     }
 
     /// Mark field as disabled
     #[must_use]
-    pub fn disabled(mut self) -> Self {
-        self.field.disabled = true;
+    pub const fn disabled(mut self) -> Self {
+        self.field.flags.disabled = true;
         self
     }
 
@@ -838,7 +838,7 @@ mod tests {
         let field = &form.fields[0];
         assert_eq!(field.name, "email");
         assert_eq!(field.label.as_deref(), Some("Email"));
-        assert!(field.required);
+        assert!(field.flags.required);
         assert_eq!(field.placeholder.as_deref(), Some("test@example.com"));
     }
 

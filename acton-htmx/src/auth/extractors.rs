@@ -100,7 +100,7 @@ where
             // For compilation purposes, we'll return an error
             let _ = user_id;
             let _ = is_htmx;
-            return Err(AuthenticationError::DatabaseNotConfigured);
+            Err(AuthenticationError::DatabaseNotConfigured)
         }
 
         #[cfg(not(feature = "postgres"))]
@@ -145,15 +145,13 @@ where
         _state: &S,
     ) -> Result<Self, Self::Rejection> {
         // Get session from request extensions
-        let session = match parts.extensions.get::<Session>().cloned() {
-            Some(s) => s,
-            None => return Ok(Self(None)), // No session = not authenticated
+        let Some(session) = parts.extensions.get::<Session>().cloned() else {
+            return Ok(Self(None)); // No session = not authenticated
         };
 
         // Check if user is authenticated
-        let user_id = match session.user_id() {
-            Some(id) => id,
-            None => return Ok(Self(None)), // No user_id = not authenticated
+        let Some(user_id) = session.user_id() else {
+            return Ok(Self(None)); // No user_id = not authenticated
         };
 
         // Load user from database
@@ -162,7 +160,7 @@ where
             // For now, we'll need a database pool in the state
             // This is a TODO for Week 8 - add database pool to ActonHtmxState
             let _ = user_id;
-            return Ok(Self(None));
+            Ok(Self(None))
         }
 
         #[cfg(not(feature = "postgres"))]

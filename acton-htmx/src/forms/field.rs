@@ -3,6 +3,20 @@
 //! Defines the various input types and field configurations
 //! supported by the form builder.
 
+/// Field attribute flags grouped for better ergonomics
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Debug, Clone, Copy, Default)]
+pub struct FieldFlags {
+    /// Whether field is required
+    pub required: bool,
+    /// Whether field is disabled
+    pub disabled: bool,
+    /// Whether field is read-only
+    pub readonly: bool,
+    /// Autofocus this field
+    pub autofocus: bool,
+}
+
 /// HTML input types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum InputType {
@@ -155,14 +169,8 @@ pub struct FormField {
     pub placeholder: Option<String>,
     /// Current value
     pub value: Option<String>,
-    /// Whether field is required
-    pub required: bool,
-    /// Whether field is disabled
-    pub disabled: bool,
-    /// Whether field is read-only
-    pub readonly: bool,
-    /// Autofocus this field
-    pub autofocus: bool,
+    /// Field attribute flags (required, disabled, readonly, autofocus)
+    pub flags: FieldFlags,
     /// Autocomplete attribute
     pub autocomplete: Option<String>,
     /// Minimum length for text inputs
@@ -241,10 +249,7 @@ impl FormField {
             label: None,
             placeholder: None,
             value: None,
-            required: false,
-            disabled: false,
-            readonly: false,
-            autofocus: false,
+            flags: FieldFlags::default(),
             autocomplete: None,
             min_length: None,
             max_length: None,
@@ -269,31 +274,31 @@ impl FormField {
 
     /// Check if this field is an input type
     #[must_use]
-    pub fn is_input(&self) -> bool {
+    pub const fn is_input(&self) -> bool {
         matches!(self.kind, FieldKind::Input(_))
     }
 
     /// Check if this field is a textarea
     #[must_use]
-    pub fn is_textarea(&self) -> bool {
+    pub const fn is_textarea(&self) -> bool {
         matches!(self.kind, FieldKind::Textarea { .. })
     }
 
     /// Check if this field is a select
     #[must_use]
-    pub fn is_select(&self) -> bool {
+    pub const fn is_select(&self) -> bool {
         matches!(self.kind, FieldKind::Select { .. })
     }
 
     /// Check if this field is a checkbox
     #[must_use]
-    pub fn is_checkbox(&self) -> bool {
+    pub const fn is_checkbox(&self) -> bool {
         matches!(self.kind, FieldKind::Checkbox { .. })
     }
 
     /// Check if this field is a radio group
     #[must_use]
-    pub fn is_radio(&self) -> bool {
+    pub const fn is_radio(&self) -> bool {
         matches!(self.kind, FieldKind::Radio { .. })
     }
 }
@@ -328,7 +333,7 @@ pub struct HtmxFieldAttrs {
 impl HtmxFieldAttrs {
     /// Check if any HTMX attributes are set
     #[must_use]
-    pub fn has_any(&self) -> bool {
+    pub const fn has_any(&self) -> bool {
         self.get.is_some()
             || self.post.is_some()
             || self.put.is_some()

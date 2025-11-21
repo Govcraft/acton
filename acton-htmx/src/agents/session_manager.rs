@@ -56,6 +56,7 @@ pub struct LoadSessionRequest {
 
 impl LoadSessionRequest {
     /// Create a new load session request with response channel
+    #[must_use]
     pub fn new(session_id: SessionId) -> (Self, oneshot::Receiver<Option<SessionData>>) {
         let (tx, rx) = oneshot::channel();
         let request = Self {
@@ -80,7 +81,7 @@ pub struct SaveSessionRequest {
 impl SaveSessionRequest {
     /// Create a new save session request (fire-and-forget)
     #[must_use]
-    pub fn new(session_id: SessionId, data: SessionData) -> Self {
+    pub const fn new(session_id: SessionId, data: SessionData) -> Self {
         Self {
             session_id,
             data,
@@ -89,6 +90,7 @@ impl SaveSessionRequest {
     }
 
     /// Create a new save session request with confirmation
+    #[must_use]
     pub fn with_confirmation(
         session_id: SessionId,
         data: SessionData,
@@ -114,6 +116,7 @@ pub struct TakeFlashesRequest {
 
 impl TakeFlashesRequest {
     /// Create a new take flashes request with response channel
+    #[must_use]
     pub fn new(session_id: SessionId) -> (Self, oneshot::Receiver<Vec<FlashMessage>>) {
         let (tx, rx) = oneshot::channel();
         let request = Self {
@@ -222,6 +225,7 @@ impl SessionManagerAgent {
     }
 
     /// Configure all message handlers for the session manager
+    #[allow(clippy::too_many_lines)] // Handler registration requires registering multiple message types
     async fn configure_handlers(mut builder: SessionAgentBuilder) -> anyhow::Result<AgentHandle> {
         builder
             // ================================================================
@@ -242,7 +246,8 @@ impl SessionManagerAgent {
                         }
                     });
 
-                    if let Some(tx) = response_tx.lock().await.take() {
+                    let tx = response_tx.lock().await.take();
+                    if let Some(tx) = tx {
                         let _ = tx.send(result);
                     }
                 })
@@ -264,7 +269,8 @@ impl SessionManagerAgent {
                 // Always use async to maintain consistent return type
                 AgentReply::from_async(async move {
                     if let Some(tx) = response_tx {
-                        if let Some(sender) = tx.lock().await.take() {
+                        let sender = tx.lock().await.take();
+                        if let Some(sender) = sender {
                             let _ = sender.send(true);
                         }
                     }
@@ -283,7 +289,8 @@ impl SessionManagerAgent {
                     .unwrap_or_default();
 
                 AgentReply::from_async(async move {
-                    if let Some(tx) = response_tx.lock().await.take() {
+                    let tx = response_tx.lock().await.take();
+                    if let Some(tx) = tx {
                         let _ = tx.send(messages);
                     }
                 })
@@ -378,18 +385,6 @@ impl SessionManagerAgent {
                 Box::pin(async move {
                     let _: () = reply_envelope.send(FlashMessages { messages }).await;
                 })
-            })
-            // Lifecycle hook: spawn cleanup task
-            .after_start(|agent| {
-                let self_handle = agent.handle().clone();
-                tokio::spawn(async move {
-                    let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
-                    loop {
-                        interval.tick().await;
-                        let _: () = self_handle.send(CleanupExpired).await;
-                    }
-                });
-                AgentReply::immediate()
             });
 
         Ok(builder.start().await)

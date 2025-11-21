@@ -88,7 +88,7 @@ impl AuthMiddleware {
 
         let is_authenticated = session
             .as_ref()
-            .and_then(|s| s.user_id())
+            .and_then(super::super::auth::Session::user_id)
             .is_some();
 
         if !is_authenticated {
@@ -101,10 +101,9 @@ impl AuthMiddleware {
             if is_htmx {
                 // For HTMX requests, return 401 with HX-Redirect header
                 return Err(AuthMiddlewareError::Unauthorized);
-            } else {
-                // For regular requests, redirect to login
-                return Err(AuthMiddlewareError::RedirectToLogin);
             }
+            // For regular requests, redirect to login
+            return Err(AuthMiddlewareError::RedirectToLogin);
         }
 
         // User is authenticated, continue with the request

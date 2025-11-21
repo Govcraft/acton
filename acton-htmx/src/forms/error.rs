@@ -126,7 +126,7 @@ impl ValidationErrors {
     }
 
     /// Merge errors from another collection
-    pub fn merge(&mut self, other: &ValidationErrors) {
+    pub fn merge(&mut self, other: &Self) {
         for (field, errors) in &other.errors {
             self.errors
                 .entry(field.clone())

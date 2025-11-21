@@ -66,7 +66,7 @@ pub struct RegisterForm {
 /// let app = Router::new().route("/login", get(login_form));
 /// ```
 pub async fn login_form(
-    HxRequest(is_htmx): HxRequest,
+    HxRequest(_is_htmx): HxRequest,
 ) -> Response {
     let html = r#"
 <!DOCTYPE html>
@@ -93,12 +93,8 @@ pub async fn login_form(
 </html>
     "#;
 
-    if is_htmx {
-        // For HTMX requests, return just the form
-        Html(html).into_response()
-    } else {
-        Html(html).into_response()
-    }
+    // For HTMX requests, return just the form
+    Html(html).into_response()
 }
 
 /// POST /login - Process login
@@ -151,7 +147,7 @@ pub async fn login_post(
 /// let app = Router::new().route("/register", get(register_form));
 /// ```
 pub async fn register_form(
-    HxRequest(is_htmx): HxRequest,
+    HxRequest(_is_htmx): HxRequest,
 ) -> Response {
     let html = r#"
 <!DOCTYPE html>
@@ -182,11 +178,7 @@ pub async fn register_form(
 </html>
     "#;
 
-    if is_htmx {
-        Html(html).into_response()
-    } else {
-        Html(html).into_response()
-    }
+    Html(html).into_response()
 }
 
 /// POST /register - Process registration

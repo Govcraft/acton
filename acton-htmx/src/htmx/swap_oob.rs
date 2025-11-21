@@ -10,6 +10,7 @@ use axum::{
     http::header::CONTENT_TYPE,
     response::{Html, IntoResponse, Response},
 };
+use std::fmt::Write;
 
 /// HTMX swap strategy for out-of-band updates
 ///
@@ -189,12 +190,13 @@ impl HxSwapOob {
 
         // OOB targets
         for target in &self.targets {
-            html.push_str(&format!(
+            write!(
+                html,
                 r#"<div id="{}" hx-swap-oob="{}">{}</div>"#,
                 target.id,
                 target.strategy.oob_value(),
                 target.content
-            ));
+            ).unwrap();
         }
 
         html

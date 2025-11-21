@@ -192,7 +192,7 @@ pub fn hx_select_oob(selector: &str) -> String {
 
 /// Generate hx-boost="true" for progressively enhanced links
 #[must_use]
-pub fn hx_boost() -> &'static str {
+pub const fn hx_boost() -> &'static str {
     r#"hx-boost="true""#
 }
 

@@ -103,6 +103,13 @@ impl EmailAddress {
     /// # }
     /// ```
     pub fn parse(email: impl Into<String>) -> Result<Self, UserError> {
+        // Validate with validator crate
+        #[derive(Validate)]
+        struct EmailValidator {
+            #[validate(email)]
+            email: String,
+        }
+
         let email = email.into();
 
         // Basic email validation
@@ -110,13 +117,6 @@ impl EmailAddress {
             return Err(UserError::InvalidEmail(
                 "Email must contain @ and domain".to_string(),
             ));
-        }
-
-        // Validate with validator crate
-        #[derive(Validate)]
-        struct EmailValidator {
-            #[validate(email)]
-            email: String,
         }
 
         let validator = EmailValidator {
@@ -282,11 +282,11 @@ impl User {
 
         // Insert into database
         let user = sqlx::query_as::<_, Self>(
-            r#"
+            r"
             INSERT INTO users (email, password_hash)
             VALUES ($1, $2)
             RETURNING id, email, password_hash, created_at, updated_at
-            "#,
+            ",
         )
         .bind(data.email.as_str())
         .bind(&password_hash)
@@ -321,11 +321,11 @@ impl User {
         pool: &sqlx::PgPool,
     ) -> Result<Self, UserError> {
         let user = sqlx::query_as::<_, Self>(
-            r#"
+            r"
             SELECT id, email, password_hash, created_at, updated_at
             FROM users
             WHERE email = $1
-            "#,
+            ",
         )
         .bind(email.as_str())
         .fetch_optional(pool)
@@ -343,11 +343,11 @@ impl User {
     #[cfg(feature = "postgres")]
     pub async fn find_by_id(id: i64, pool: &sqlx::PgPool) -> Result<Self, UserError> {
         let user = sqlx::query_as::<_, Self>(
-            r#"
+            r"
             SELECT id, email, password_hash, created_at, updated_at
             FROM users
             WHERE id = $1
-            "#,
+            ",
         )
         .bind(id)
         .fetch_optional(pool)
@@ -450,8 +450,8 @@ fn validate_password_strength(password: &str) -> Result<(), UserError> {
         ));
     }
 
-    let has_uppercase = password.chars().any(|c| c.is_uppercase());
-    let has_lowercase = password.chars().any(|c| c.is_lowercase());
+    let has_uppercase = password.chars().any(char::is_uppercase);
+    let has_lowercase = password.chars().any(char::is_lowercase);
     let has_digit = password.chars().any(|c| c.is_ascii_digit());
 
     if !has_uppercase {
