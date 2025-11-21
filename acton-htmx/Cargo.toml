@@ -53,6 +53,7 @@ parking_lot.workspace = true
 
 # Crate-specific
 acton-htmx-macros = { path = "../acton-htmx-macros" }
+base64 = "0.22.1"
 
 [dev-dependencies]
 proptest.workspace = true

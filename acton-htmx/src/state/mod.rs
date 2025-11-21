@@ -3,7 +3,7 @@
 //! Combines acton-service infrastructure with acton-reactive actors and
 //! HTMX-specific components.
 
-use crate::agents::SessionManagerAgent;
+use crate::agents::{CsrfManagerAgent, SessionManagerAgent};
 use crate::{config::ActonHtmxConfig, observability::ObservabilityConfig};
 use acton_reactive::prelude::{AgentHandle, AgentRuntime};
 use std::sync::Arc;
@@ -14,9 +14,10 @@ use std::sync::Arc;
 /// - Configuration (from acton-service)
 /// - Observability (from acton-service)
 /// - Session management agent (from acton-reactive)
+/// - CSRF protection agent (from acton-reactive)
 /// - Database pools (from acton-service) - TODO
 /// - Redis cache (from acton-service) - TODO
-/// - Additional agents (CSRF, jobs) - TODO
+/// - Additional agents (jobs) - TODO
 /// - Template registry - TODO
 ///
 /// # Example
@@ -57,6 +58,11 @@ pub struct ActonHtmxState {
     ///
     /// Clone this freely - `AgentHandle` is designed for concurrent access
     session_manager: AgentHandle,
+
+    /// CSRF manager agent handle
+    ///
+    /// Clone this freely - `AgentHandle` is designed for concurrent access
+    csrf_manager: AgentHandle,
 }
 
 impl ActonHtmxState {
@@ -86,11 +92,13 @@ impl ActonHtmxState {
         let config = ActonHtmxConfig::default();
         let observability = ObservabilityConfig::default();
         let session_manager = SessionManagerAgent::spawn(runtime).await?;
+        let csrf_manager = CsrfManagerAgent::spawn(runtime).await?;
 
         Ok(Self {
             config: Arc::new(config),
             observability: Arc::new(observability),
             session_manager,
+            csrf_manager,
         })
     }
 
@@ -121,11 +129,13 @@ impl ActonHtmxState {
     ) -> anyhow::Result<Self> {
         let observability = ObservabilityConfig::new("acton-htmx");
         let session_manager = SessionManagerAgent::spawn(runtime).await?;
+        let csrf_manager = CsrfManagerAgent::spawn(runtime).await?;
 
         Ok(Self {
             config: Arc::new(config),
             observability: Arc::new(observability),
             session_manager,
+            csrf_manager,
         })
     }
 
@@ -170,6 +180,27 @@ impl ActonHtmxState {
     #[must_use]
     pub fn session_manager(&self) -> &AgentHandle {
         &self.session_manager
+    }
+
+    /// Get the CSRF manager agent handle
+    ///
+    /// Use this to send CSRF-related messages directly to the agent.
+    /// For most use cases, prefer using the `CsrfMiddleware` and extractors.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use acton_htmx::agents::{GetOrCreateTokenRequest, ValidateTokenRequest};
+    ///
+    /// async fn handler(State(state): State<ActonHtmxState>) {
+    ///     let (request, rx) = GetOrCreateTokenRequest::new(session_id);
+    ///     state.csrf_manager().send(request).await;
+    ///     let token = rx.await.ok();
+    /// }
+    /// ```
+    #[must_use]
+    pub const fn csrf_manager(&self) -> &AgentHandle {
+        &self.csrf_manager
     }
 }
 

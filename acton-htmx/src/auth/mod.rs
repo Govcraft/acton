@@ -2,23 +2,24 @@
 //!
 //! This module provides session-based authentication with secure HTTP-only cookies.
 
+pub mod extractors;
+pub mod handlers;
+pub mod password;
 pub mod session;
+pub mod user;
 
+pub use extractors::{Authenticated, AuthenticationError, OptionalAuth};
+pub use handlers::{
+    login_form, login_post, logout_post, register_form, register_post, AuthHandlerError,
+    LoginForm, RegisterForm,
+};
+pub use password::{
+    hash_password, verify_password, PasswordError, PasswordHashConfig, PasswordHasher,
+};
 pub use session::{FlashLevel, FlashMessage, SessionData, SessionError, SessionId};
+pub use user::{CreateUser, EmailAddress, User, UserError};
 
 use serde::{Deserialize, Serialize};
-
-/// Authenticated user extractor for protected routes
-///
-/// Use this extractor in handlers that require authentication.
-/// The extractor will return a 401 Unauthorized response if no valid session exists.
-pub struct Authenticated<T>(std::marker::PhantomData<T>);
-
-/// Optional authentication extractor
-///
-/// Use this extractor in handlers that work with or without authentication.
-/// Returns `Some(user)` if authenticated, `None` otherwise.
-pub struct OptionalAuth<T>(std::marker::PhantomData<T>);
 
 /// Session wrapper for handler extractors
 ///
