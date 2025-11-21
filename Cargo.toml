@@ -1,0 +1,102 @@
+[workspace]
+members = [
+    "acton-htmx",
+    "acton-htmx-cli",
+    "acton-htmx-macros",
+]
+resolver = "2"
+
+[workspace.package]
+version = "1.0.0-alpha.1"
+edition = "2021"
+rust-version = "1.75.0"
+authors = ["Acton Contributors"]
+license = "MIT"
+repository = "https://github.com/GovCraft/acton-htmx"
+homepage = "https://acton-htmx.dev"
+keywords = ["web", "framework", "htmx", "axum", "hypermedia"]
+categories = ["web-programming::http-server"]
+
+[workspace.dependencies]
+# From acton-service - Core web framework
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["compression-full", "cors", "trace", "timeout", "limit"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "sqlite", "chrono", "uuid", "json"] }
+redis = "0.32"
+deadpool-redis = "0.22"
+figment = { version = "0.10", features = ["toml", "env", "json"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+opentelemetry = "0.30"
+opentelemetry-otlp = { version = "0.30", features = ["grpc-tonic"] }
+tower-resilience = "0.3"
+jsonwebtoken = "10"
+governor = "0.8"
+
+# From acton-reactive - Actor runtime
+acton-reactive = "1.1.0-beta"
+tokio = { version = "1", features = ["full"] }
+
+# HTMX-specific - Template engine
+askama = { version = "0.12", features = ["with-axum"] }
+askama_axum = "0.4"
+validator = { version = "0.18", features = ["derive"] }
+
+# Security & crypto
+argon2 = "0.5"
+rand = "0.8"
+sha2 = "0.10"
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Async runtime
+async-trait = "0.1"
+
+# HTTP
+http = "1"
+http-body-util = "0.1"
+hyper = "1"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+time = "0.3"
+
+# Utilities
+once_cell = "1"
+parking_lot = "0.12"
+
+# Testing
+proptest = "1"
+
+# Procedural macros
+syn = { version = "2", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"
+
+# CLI
+clap = { version = "4", features = ["derive", "cargo"] }
+console = "0.15"
+indicatif = "0.17"
+dialoguer = "0.11"
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.test]
+opt-level = 1

@@ -1,0 +1,67 @@
+[package]
+name = "acton-htmx"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Opinionated Rust web framework for HTMX applications"
+
+[dependencies]
+# Workspace dependencies
+axum.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+sqlx.workspace = true
+redis = { workspace = true, optional = true }
+deadpool-redis = { workspace = true, optional = true }
+figment.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+opentelemetry = { workspace = true, optional = true }
+opentelemetry-otlp = { workspace = true, optional = true }
+tower-resilience.workspace = true
+governor.workspace = true
+acton-reactive.workspace = true
+tokio.workspace = true
+askama.workspace = true
+askama_axum.workspace = true
+validator.workspace = true
+argon2.workspace = true
+rand.workspace = true
+sha2.workspace = true
+uuid.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
+http.workspace = true
+hyper.workspace = true
+chrono.workspace = true
+once_cell.workspace = true
+parking_lot.workspace = true
+
+# Crate-specific
+acton-htmx-macros = { path = "../acton-htmx-macros" }
+
+[dev-dependencies]
+proptest.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
+anyhow.workspace = true
+
+[features]
+default = ["postgres", "redis"]
+postgres = ["sqlx/postgres"]
+sqlite = ["sqlx/sqlite"]
+mysql = ["sqlx/mysql"]
+redis = ["dep:redis", "dep:deadpool-redis"]
+otel-metrics = ["dep:opentelemetry", "dep:opentelemetry-otlp"]
+
+[lib]
+name = "acton_htmx"
+path = "src/lib.rs"

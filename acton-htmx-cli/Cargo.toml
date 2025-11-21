@@ -1,0 +1,29 @@
+[package]
+name = "acton-htmx-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "CLI tool for acton-htmx framework"
+
+[[bin]]
+name = "acton-htmx"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+console.workspace = true
+indicatif.workspace = true
+dialoguer.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+
+# Template rendering
+handlebars = "6"
+
+# File operations
+walkdir = "2"
