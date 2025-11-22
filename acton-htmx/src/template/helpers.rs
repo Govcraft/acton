@@ -15,16 +15,35 @@
 //! // Result: hx-post="/api/items" hx-target="#item-list" hx-swap="innerHTML"
 //! ```
 
-use std::collections::HashMap;
-use std::hash::BuildHasher;
+use crate::auth::session::FlashMessage;
 
 /// Generate CSRF token input field
 ///
-/// Returns an HTML hidden input with the CSRF token.
-/// Usage in templates: `{{ csrf_token() }}`
+/// **DEPRECATED**: Use `csrf_token_with(token)` instead, passing the token from your template context.
+///
+/// This function returns a placeholder value and should not be used in production.
+/// Extract the CSRF token in your handler using the `CsrfToken` extractor and pass it
+/// to your template context, then use `csrf_token_with(token)` in your template.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use acton_htmx::middleware::CsrfToken;
+/// use acton_htmx::template::helpers::csrf_token_with;
+///
+/// async fn handler(CsrfToken(token): CsrfToken) -> impl IntoResponse {
+///     // Pass token to template context
+///     MyTemplate { csrf_token: token }
+/// }
+/// ```
+///
+/// In your template:
+/// ```html
+/// {{ csrf_token_with(csrf_token) }}
+/// ```
+#[deprecated(since = "1.1.0", note = "Use csrf_token_with(token) instead, passing token from CsrfToken extractor")]
 #[must_use]
 pub fn csrf_token() -> String {
-    // TODO: Integrate with actual CSRF middleware in Week 9
     r#"<input type="hidden" name="_csrf_token" value="placeholder">"#.to_string()
 }
 
@@ -36,33 +55,127 @@ pub fn csrf_token_with(token: &str) -> String {
     format!(r#"<input type="hidden" name="_csrf_token" value="{token}">"#)
 }
 
-/// Generate flash message HTML
+/// Render flash messages as HTML
 ///
-/// Renders flash messages with appropriate styling.
-/// Usage in templates: `{{ flash_messages() }}`
+/// Renders a collection of flash messages with appropriate styling and ARIA attributes.
+/// Each message is rendered with its level-specific CSS class and can include an optional title.
+///
+/// The generated HTML includes:
+/// - Container div with class `flash-messages`
+/// - Individual message divs with level-specific classes (`flash-success`, `flash-info`, etc.)
+/// - ARIA role and live region attributes for accessibility
+/// - Optional title in a `<strong>` tag
+/// - Message text in a `<span>` tag
+///
+/// # Examples
+///
+/// ```rust
+/// use acton_htmx::auth::session::FlashMessage;
+/// use acton_htmx::template::helpers::flash_messages;
+///
+/// let messages = vec![
+///     FlashMessage::success("Profile updated successfully"),
+///     FlashMessage::error("Invalid email address"),
+/// ];
+///
+/// let html = flash_messages(&messages);
+/// assert!(html.contains("flash-success"));
+/// assert!(html.contains("Profile updated"));
+/// ```
+///
+/// In your Askama templates:
+/// ```html
+/// <!-- Extract flash messages in handler -->
+/// {{ flash_messages(messages) }}
+/// ```
+///
+/// # Usage with `FlashExtractor`
+///
+/// ```rust,ignore
+/// use acton_htmx::extractors::FlashExtractor;
+/// use acton_htmx::template::helpers::flash_messages;
+///
+/// async fn handler(FlashExtractor(messages): FlashExtractor) -> impl IntoResponse {
+///     MyTemplate { flash_html: flash_messages(&messages) }
+/// }
+/// ```
 #[must_use]
-pub const fn flash_messages() -> String {
-    // TODO: Integrate with actual flash message system in Week 7
-    String::new()
+pub fn flash_messages(messages: &[FlashMessage]) -> String {
+    use std::fmt::Write;
+
+    if messages.is_empty() {
+        return String::new();
+    }
+
+    let mut html = String::from(r#"<div class="flash-messages" role="status" aria-live="polite">"#);
+
+    for msg in messages {
+        let _ = write!(
+            html,
+            r#"<div class="{}" role="alert">"#,
+            msg.css_class()
+        );
+
+        if let Some(title) = &msg.title {
+            let _ = write!(html, "<strong>{}</strong> ", escape_html(title));
+        }
+
+        let _ = write!(html, "<span>{}</span>", escape_html(&msg.message));
+        html.push_str("</div>");
+    }
+
+    html.push_str("</div>");
+    html
 }
 
-/// Generate route URL
-///
-/// Builds a URL for a named route with parameters.
-/// Usage in templates: `{{ route("posts.show", {"id": post.id}) }}`
-#[must_use]
-pub fn route<S: BuildHasher>(_name: &str, _params: HashMap<String, String, S>) -> String {
-    // TODO: Implement route generation with named routes
-    "/".to_string()
-}
+// Note: The route() helper has been removed as named routes are not currently implemented.
+// Use hardcoded paths in your templates instead:
+//   href="/posts/{{ post.id }}"
+// If named routes are needed in the future, they can be implemented in Phase 3.
 
 /// Generate asset URL with cache busting
 ///
-/// Returns a versioned asset URL for cache busting in production.
+/// **Note**: Currently returns the path as-is without cache busting.
+/// Cache busting implementation is deferred to Phase 3.
+///
+/// # Current Behavior
+///
+/// Simply returns the provided path unchanged:
+/// ```rust
+/// use acton_htmx::template::helpers::asset;
+///
+/// assert_eq!(asset("/css/styles.css"), "/css/styles.css");
+/// ```
+///
+/// # Recommended Production Approach
+///
+/// Until cache busting is implemented, use one of these strategies:
+///
+/// 1. **CDN with query string versioning**: Append a version parameter to assets
+///    ```html
+///    <link rel="stylesheet" href="{{ asset("/css/styles.css") }}?v=1.2.3">
+///    ```
+///
+/// 2. **Filename-based versioning**: Include version in filename during build
+///    ```html
+///    <link rel="stylesheet" href="/css/styles.v1.2.3.css">
+///    ```
+///
+/// 3. **HTTP Cache-Control headers**: Configure your static file server with proper caching headers
+///    ```
+///    Cache-Control: public, max-age=31536000, immutable
+///    ```
+///
+/// # Future Implementation (Phase 3)
+///
+/// When implemented, this helper will:
+/// - Read a manifest file (e.g., `mix-manifest.json`) generated during build
+/// - Map logical paths to versioned paths (e.g., `/css/app.css` → `/css/app.abc123.css`)
+/// - Support both filename hashing and query string approaches
+///
 /// Usage in templates: `{{ asset("/css/styles.css") }}`
 #[must_use]
 pub fn asset(path: &str) -> String {
-    // TODO: Add cache busting in production (append hash to filename)
     path.to_string()
 }
 
@@ -240,6 +353,31 @@ impl From<&str> for SafeString {
 }
 
 // =============================================================================
+// HTML Escaping Utilities
+// =============================================================================
+
+/// Escape a string for safe use in HTML content
+///
+/// Escapes special HTML characters to prevent XSS attacks.
+/// This is used internally by helpers that generate HTML.
+///
+/// # Examples
+///
+/// ```rust
+/// use acton_htmx::template::helpers::escape_html;
+///
+/// assert_eq!(escape_html("<script>alert('xss')</script>"),
+///            "&lt;script&gt;alert('xss')&lt;/script&gt;");
+/// assert_eq!(escape_html("Hello & goodbye"), "Hello &amp; goodbye");
+/// ```
+#[must_use]
+pub fn escape_html(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
+// =============================================================================
 // Validation Error Helpers
 // =============================================================================
 
@@ -359,6 +497,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(deprecated)]
     fn test_csrf_token() {
         let token = csrf_token();
         assert!(token.contains("_csrf_token"));
@@ -484,5 +623,93 @@ mod tests {
         let errors = validator::ValidationErrors::new();
         let html = validation_errors_list(&errors);
         assert!(html.is_empty());
+    }
+
+    #[test]
+    fn test_flash_messages_empty() {
+        let messages: Vec<FlashMessage> = vec![];
+        let html = flash_messages(&messages);
+        assert!(html.is_empty());
+    }
+
+    #[test]
+    fn test_flash_messages_single() {
+        use crate::auth::session::FlashMessage;
+
+        let messages = vec![FlashMessage::success("Operation successful")];
+        let html = flash_messages(&messages);
+
+        assert!(html.contains("flash-messages"));
+        assert!(html.contains("flash-success"));
+        assert!(html.contains("Operation successful"));
+        assert!(html.contains("role=\"alert\""));
+        assert!(html.contains("role=\"status\""));
+    }
+
+    #[test]
+    fn test_flash_messages_multiple_levels() {
+        use crate::auth::session::FlashMessage;
+
+        let messages = vec![
+            FlashMessage::success("Success message"),
+            FlashMessage::error("Error message"),
+            FlashMessage::warning("Warning message"),
+            FlashMessage::info("Info message"),
+        ];
+        let html = flash_messages(&messages);
+
+        assert!(html.contains("flash-success"));
+        assert!(html.contains("flash-error"));
+        assert!(html.contains("flash-warning"));
+        assert!(html.contains("flash-info"));
+        assert!(html.contains("Success message"));
+        assert!(html.contains("Error message"));
+        assert!(html.contains("Warning message"));
+        assert!(html.contains("Info message"));
+    }
+
+    #[test]
+    fn test_flash_messages_with_title() {
+        use crate::auth::session::FlashMessage;
+
+        let messages = vec![
+            FlashMessage::success("Message text").with_title("Success!"),
+        ];
+        let html = flash_messages(&messages);
+
+        assert!(html.contains("<strong>Success!</strong>"));
+        assert!(html.contains("Message text"));
+    }
+
+    #[test]
+    fn test_flash_messages_xss_protection() {
+        use crate::auth::session::FlashMessage;
+
+        let messages = vec![
+            FlashMessage::error("<script>alert('xss')</script>"),
+        ];
+        let html = flash_messages(&messages);
+
+        // Should be escaped
+        assert!(html.contains("&lt;script&gt;"));
+        assert!(!html.contains("<script>"));
+    }
+
+    #[test]
+    fn test_escape_html() {
+        assert_eq!(escape_html("Hello, world!"), "Hello, world!");
+        assert_eq!(escape_html("<script>"), "&lt;script&gt;");
+        assert_eq!(escape_html("A & B"), "A &amp; B");
+        assert_eq!(escape_html("<div>content</div>"), "&lt;div&gt;content&lt;/div&gt;");
+        assert_eq!(
+            escape_html("<script>alert('xss')</script>"),
+            "&lt;script&gt;alert('xss')&lt;/script&gt;"
+        );
+    }
+
+    #[test]
+    fn test_escape_html_preserves_safe_chars() {
+        assert_eq!(escape_html("Hello 123 !@#$%^*()_+-=[]{}|;:',./? "),
+                   "Hello 123 !@#$%^*()_+-=[]{}|;:',./? ");
     }
 }
