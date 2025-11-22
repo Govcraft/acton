@@ -70,6 +70,8 @@ openidconnect = "4.0.1"
 hex = "0.4.3"
 time = { workspace = true, features = ["macros"] }
 reqwest = { version = "0.12.24", features = ["json"] }
+cedar-policy = { version = "4.3", optional = true }
+regex = "1.12.2"
 
 [dev-dependencies]
 proptest.workspace = true
@@ -78,7 +80,8 @@ anyhow.workspace = true
 tempfile = "3.23.0"
 
 [features]
-default = ["postgres", "redis"]
+default = ["postgres", "redis", "cedar"]
+cedar = ["dep:cedar-policy"]
 postgres = ["sqlx/postgres"]
 sqlite = ["sqlx/sqlite"]
 mysql = ["sqlx/mysql"]

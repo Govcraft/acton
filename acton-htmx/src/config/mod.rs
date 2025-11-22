@@ -53,6 +53,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use crate::oauth2::types::OAuthConfig;
 
@@ -156,6 +157,104 @@ pub enum SameSitePolicy {
     None,
 }
 
+/// Failure mode for Cedar policy evaluation errors
+#[cfg(feature = "cedar")]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum FailureMode {
+    /// Deny requests when policy evaluation fails (strict, production)
+    Closed,
+    /// Allow requests when policy evaluation fails (permissive, development)
+    Open,
+}
+
+impl Default for FailureMode {
+    fn default() -> Self {
+        if cfg!(debug_assertions) {
+            Self::Open
+        } else {
+            Self::Closed
+        }
+    }
+}
+
+/// Cedar authorization configuration
+///
+/// Configuration for AWS Cedar policy-based authorization.
+/// Cedar provides declarative, human-readable authorization policies
+/// with support for RBAC, ABAC, resource ownership, and attribute-based access control.
+///
+/// # Example Configuration
+///
+/// ```toml
+/// [cedar]
+/// enabled = true
+/// policy_path = "policies/app.cedar"
+/// hot_reload = false
+/// hot_reload_interval_secs = 60
+/// cache_enabled = true
+/// cache_ttl_secs = 300
+/// failure_mode = "closed"  # or "open"
+/// ```
+#[cfg(feature = "cedar")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CedarConfig {
+    /// Enable Cedar authorization
+    pub enabled: bool,
+
+    /// Path to Cedar policy file
+    pub policy_path: PathBuf,
+
+    /// Enable policy hot-reload (watch file for changes)
+    /// Note: Manual reload via endpoint is recommended in production
+    pub hot_reload: bool,
+
+    /// Hot-reload check interval in seconds
+    pub hot_reload_interval_secs: u64,
+
+    /// Enable policy caching for performance (requires redis feature)
+    pub cache_enabled: bool,
+
+    /// Policy cache TTL in seconds
+    pub cache_ttl_secs: u64,
+
+    /// Failure mode for policy evaluation errors
+    /// - Closed: Deny requests when policy evaluation fails (strict, production)
+    /// - Open: Allow requests when policy evaluation fails (permissive, development)
+    pub failure_mode: FailureMode,
+}
+
+#[cfg(feature = "cedar")]
+impl Default for CedarConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false, // Disabled by default, must be explicitly enabled
+            policy_path: PathBuf::from("policies/app.cedar"),
+            hot_reload: false,
+            hot_reload_interval_secs: 60,
+            cache_enabled: true,
+            cache_ttl_secs: 300,
+            failure_mode: FailureMode::default(), // Open in debug, closed in release
+        }
+    }
+}
+
+#[cfg(feature = "cedar")]
+impl CedarConfig {
+    /// Get hot-reload interval as Duration
+    #[must_use]
+    pub const fn hot_reload_interval(&self) -> Duration {
+        Duration::from_secs(self.hot_reload_interval_secs)
+    }
+
+    /// Get cache TTL as Duration
+    #[must_use]
+    pub const fn cache_ttl(&self) -> Duration {
+        Duration::from_secs(self.cache_ttl_secs)
+    }
+}
+
 /// Complete acton-htmx configuration
 ///
 /// Combines framework configuration with HTMX-specific settings.
@@ -177,6 +276,11 @@ pub struct ActonHtmxConfig {
     /// OAuth2 configuration
     #[serde(default)]
     pub oauth2: OAuthConfig,
+
+    /// Cedar authorization configuration (optional, requires cedar feature)
+    #[cfg(feature = "cedar")]
+    #[serde(default)]
+    pub cedar: Option<CedarConfig>,
 
     /// Feature flags
     #[serde(default)]

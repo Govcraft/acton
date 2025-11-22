@@ -160,13 +160,14 @@ impl std::str::FromStr for EmailAddress {
 /// User model representing an authenticated user
 ///
 /// This model is designed to be stored in a database and includes
-/// all necessary fields for authentication and session management.
+/// all necessary fields for authentication, authorization, and session management.
 ///
 /// # Security Considerations
 ///
 /// - Password hash is stored, never the plaintext password
 /// - Email addresses are normalized to lowercase
 /// - Created/updated timestamps for audit trail
+/// - Roles and permissions for authorization (Cedar policy integration)
 ///
 /// # Database Schema
 ///
@@ -175,11 +176,15 @@ impl std::str::FromStr for EmailAddress {
 ///     id BIGSERIAL PRIMARY KEY,
 ///     email TEXT NOT NULL UNIQUE,
 ///     password_hash TEXT NOT NULL,
+///     roles TEXT[] NOT NULL DEFAULT '{"user"}',
+///     permissions TEXT[] NOT NULL DEFAULT '{}',
+///     email_verified BOOLEAN NOT NULL DEFAULT FALSE,
 ///     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 ///     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 /// );
 ///
 /// CREATE INDEX idx_users_email ON users(email);
+/// CREATE INDEX idx_users_roles ON users USING GIN(roles);
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct User {
@@ -194,6 +199,20 @@ pub struct User {
     /// Argon2id password hash (never exposed in responses)
     #[serde(skip_serializing)]
     pub password_hash: String,
+
+    /// User roles for authorization
+    /// Common roles: "user", "admin", "moderator"
+    /// Used by Cedar policy engine for role-based access control (RBAC)
+    pub roles: Vec<String>,
+
+    /// User permissions for fine-grained authorization
+    /// Format: "resource:action" (e.g., "posts:create", "posts:delete")
+    /// Used by Cedar policy engine for attribute-based access control (ABAC)
+    pub permissions: Vec<String>,
+
+    /// Email verification status
+    /// Required for certain actions (e.g., posting content)
+    pub email_verified: bool,
 
     /// Timestamp when user was created
     pub created_at: DateTime<Utc>,
@@ -280,16 +299,19 @@ impl User {
         // Hash password
         let password_hash = hash_password(&data.password)?;
 
-        // Insert into database
+        // Insert into database with default role "user"
         let user = sqlx::query_as::<_, Self>(
             r"
-            INSERT INTO users (email, password_hash)
-            VALUES ($1, $2)
-            RETURNING id, email, password_hash, created_at, updated_at
+            INSERT INTO users (email, password_hash, roles, permissions, email_verified)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, email, password_hash, roles, permissions, email_verified, created_at, updated_at
             ",
         )
         .bind(data.email.as_str())
         .bind(&password_hash)
+        .bind(vec!["user".to_string()]) // Default role
+        .bind(Vec::<String>::new()) // Empty permissions
+        .bind(false) // Email not verified
         .fetch_one(pool)
         .await?;
 
@@ -322,7 +344,7 @@ impl User {
     ) -> Result<Self, UserError> {
         let user = sqlx::query_as::<_, Self>(
             r"
-            SELECT id, email, password_hash, created_at, updated_at
+            SELECT id, email, password_hash, roles, permissions, email_verified, created_at, updated_at
             FROM users
             WHERE email = $1
             ",
@@ -344,7 +366,7 @@ impl User {
     pub async fn find_by_id(id: i64, pool: &sqlx::PgPool) -> Result<Self, UserError> {
         let user = sqlx::query_as::<_, Self>(
             r"
-            SELECT id, email, password_hash, created_at, updated_at
+            SELECT id, email, password_hash, roles, permissions, email_verified, created_at, updated_at
             FROM users
             WHERE id = $1
             ",
@@ -539,6 +561,9 @@ mod tests {
             id: 1,
             email: EmailAddress::parse("test@example.com").unwrap(),
             password_hash: hash,
+            roles: vec!["user".to_string()],
+            permissions: vec![],
+            email_verified: false,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -566,6 +591,9 @@ mod tests {
             id: 1,
             email: EmailAddress::parse("test@example.com").unwrap(),
             password_hash: "hash".to_string(),
+            roles: vec!["user".to_string()],
+            permissions: vec![],
+            email_verified: false,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
