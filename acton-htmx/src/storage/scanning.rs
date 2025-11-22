@@ -35,7 +35,33 @@
 
 use super::types::{StorageError, StorageResult, UploadedFile};
 use async_trait::async_trait;
+use chrono::Utc;
+use serde::{Deserialize, Serialize};
 use std::fmt;
+use tracing::{error, warn};
+
+/// Metadata stored with quarantined files
+///
+/// This struct contains information about a quarantined file, including
+/// when it was quarantined, what threat was detected, and the original
+/// filename.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct QuarantineMetadata {
+    /// ISO 8601 timestamp when file was quarantined
+    quarantined_at: String,
+
+    /// Detected threat name
+    threat_name: String,
+
+    /// Original filename
+    original_filename: String,
+
+    /// Original MIME type
+    original_mime_type: String,
+
+    /// File size in bytes
+    file_size: usize,
+}
 
 /// Result of a virus scan
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -514,6 +540,10 @@ impl VirusScanner for ClamAvScanner {
 /// This wrapper scanner wraps another scanner and automatically quarantines
 /// files that are detected as infected.
 ///
+/// When an infected file is detected, it is moved to the quarantine directory
+/// with a unique filename (UUID-based) and accompanied by a metadata JSON file
+/// containing information about the threat, original filename, and timestamp.
+///
 /// # Examples
 ///
 /// ```rust
@@ -532,7 +562,6 @@ pub struct QuarantineScanner<S: VirusScanner> {
     inner: S,
 
     /// Path to quarantine directory
-    #[allow(dead_code)]
     quarantine_path: std::path::PathBuf,
 }
 
@@ -569,13 +598,19 @@ impl<S: VirusScanner> VirusScanner for QuarantineScanner<S> {
     async fn scan(&self, file: &UploadedFile) -> StorageResult<ScanResult> {
         let result = self.inner.scan(file).await?;
 
-        if let ScanResult::Infected { .. } = result {
-            // TODO: Implement quarantine logic
-            // 1. Create quarantine directory if it doesn't exist
-            // 2. Generate unique filename in quarantine
-            // 3. Write file to quarantine with metadata (timestamp, threat name, original path)
-            // 4. Optionally encrypt quarantined file
-            // 5. Log quarantine event
+        if let ScanResult::Infected { ref threat } = result {
+            // Quarantine the infected file
+            if let Err(e) = self.quarantine_file(file, threat).await {
+                error!(
+                    "Failed to quarantine infected file '{}': {}",
+                    file.filename, e
+                );
+                // Log error but don't fail the scan - we still return Infected result
+                warn!(
+                    "File '{}' detected as infected with '{}' but quarantine failed",
+                    file.filename, threat
+                );
+            }
         }
 
         Ok(result)
@@ -587,6 +622,66 @@ impl<S: VirusScanner> VirusScanner for QuarantineScanner<S> {
 
     async fn is_available(&self) -> bool {
         self.inner.is_available().await
+    }
+}
+
+impl<S: VirusScanner> QuarantineScanner<S> {
+    /// Quarantines an infected file
+    ///
+    /// Creates the quarantine directory if needed, generates a unique filename,
+    /// writes the file with metadata, and logs the event.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if directory creation, file writing, or metadata serialization fails.
+    async fn quarantine_file(&self, file: &UploadedFile, threat: &str) -> StorageResult<()> {
+        // 1. Create quarantine directory if it doesn't exist
+        tokio::fs::create_dir_all(&self.quarantine_path)
+            .await
+            .map_err(|e| {
+                StorageError::Other(format!("Failed to create quarantine directory: {e}"))
+            })?;
+
+        // 2. Generate unique filename (UUID + timestamp)
+        let unique_id = uuid::Uuid::new_v4();
+        let timestamp = Utc::now().format("%Y%m%d_%H%M%S");
+        let quarantine_filename = format!("{timestamp}_{unique_id}");
+        let quarantine_file_path = self.quarantine_path.join(&quarantine_filename);
+        let metadata_path = self.quarantine_path.join(format!("{quarantine_filename}.json"));
+
+        // 3. Create metadata
+        let metadata = QuarantineMetadata {
+            quarantined_at: Utc::now().to_rfc3339(),
+            threat_name: threat.to_string(),
+            original_filename: file.filename.clone(),
+            original_mime_type: file.content_type.clone(),
+            file_size: file.data.len(),
+        };
+
+        // 4. Write file to quarantine
+        tokio::fs::write(&quarantine_file_path, &file.data)
+            .await
+            .map_err(|e| StorageError::Other(format!("Failed to write quarantined file: {e}")))?;
+
+        // 5. Write metadata JSON
+        let metadata_json = serde_json::to_string_pretty(&metadata)
+            .map_err(|e| {
+                StorageError::Other(format!("Failed to serialize quarantine metadata: {e}"))
+            })?;
+
+        tokio::fs::write(&metadata_path, metadata_json)
+            .await
+            .map_err(|e| {
+                StorageError::Other(format!("Failed to write quarantine metadata: {e}"))
+            })?;
+
+        // 6. Log quarantine event
+        warn!(
+            "File '{}' quarantined as '{}' - Threat: {}",
+            file.filename, quarantine_filename, threat
+        );
+
+        Ok(())
     }
 }
 
@@ -715,5 +810,195 @@ mod tests {
 
         let result = scanner.scan(&file).await.unwrap();
         assert_eq!(result, ScanResult::Clean);
+    }
+
+    // Mock scanner that always returns Infected for testing quarantine
+    #[derive(Debug, Clone)]
+    struct MockInfectedScanner {
+        threat: String,
+    }
+
+    impl MockInfectedScanner {
+        fn new(threat: impl Into<String>) -> Self {
+            Self {
+                threat: threat.into(),
+            }
+        }
+    }
+
+    #[async_trait]
+    impl VirusScanner for MockInfectedScanner {
+        async fn scan(&self, _file: &UploadedFile) -> StorageResult<ScanResult> {
+            Ok(ScanResult::Infected {
+                threat: self.threat.clone(),
+            })
+        }
+
+        fn name(&self) -> &'static str {
+            "Mock Infected Scanner"
+        }
+
+        async fn is_available(&self) -> bool {
+            true
+        }
+    }
+
+    #[tokio::test]
+    async fn test_quarantine_scanner_quarantines_infected_files() {
+        // Create a temporary quarantine directory
+        let temp_dir = tempfile::tempdir().unwrap();
+        let quarantine_path = temp_dir.path().to_path_buf();
+
+        let file = UploadedFile::new(
+            "malware.exe",
+            "application/octet-stream",
+            b"EICAR test file".to_vec(),
+        );
+
+        let scanner = QuarantineScanner::new(
+            MockInfectedScanner::new("EICAR.Test.Signature"),
+            quarantine_path.clone(),
+        );
+
+        let result = scanner.scan(&file).await.unwrap();
+
+        // Verify scan result is still Infected
+        assert!(matches!(result, ScanResult::Infected { .. }));
+
+        // Verify quarantine directory was created
+        assert!(quarantine_path.exists());
+
+        // Verify files were created in quarantine (should have at least 2 files: data + metadata)
+        let entries: Vec<_> = std::fs::read_dir(&quarantine_path)
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert_eq!(entries.len(), 2, "Should have quarantine file and metadata");
+
+        // Find the metadata file
+        let metadata_file = entries
+            .iter()
+            .find(|e| e.path().extension().and_then(|s| s.to_str()) == Some("json"))
+            .expect("Should have metadata JSON file");
+
+        // Read and verify metadata
+        let metadata_json = std::fs::read_to_string(metadata_file.path()).unwrap();
+        let metadata: QuarantineMetadata = serde_json::from_str(&metadata_json).unwrap();
+
+        assert_eq!(metadata.threat_name, "EICAR.Test.Signature");
+        assert_eq!(metadata.original_filename, "malware.exe");
+        assert_eq!(metadata.original_mime_type, "application/octet-stream");
+        assert_eq!(metadata.file_size, b"EICAR test file".len());
+
+        // Verify file data was written
+        let data_file = entries
+            .iter()
+            .find(|e| e.path().extension().is_none())
+            .expect("Should have quarantine data file");
+        let quarantined_data = std::fs::read(data_file.path()).unwrap();
+        assert_eq!(quarantined_data, b"EICAR test file");
+    }
+
+    #[tokio::test]
+    async fn test_quarantine_scanner_clean_files_not_quarantined() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let quarantine_path = temp_dir.path().to_path_buf();
+
+        let file = UploadedFile::new("clean.txt", "text/plain", b"clean data".to_vec());
+
+        let scanner = QuarantineScanner::new(NoOpScanner::new(), quarantine_path.clone());
+
+        let result = scanner.scan(&file).await.unwrap();
+
+        // Verify scan result is Clean
+        assert_eq!(result, ScanResult::Clean);
+
+        // Verify no files were created in quarantine
+        let entries: Vec<_> = std::fs::read_dir(&quarantine_path)
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert_eq!(entries.len(), 0, "Clean files should not be quarantined");
+    }
+
+    #[tokio::test]
+    async fn test_quarantine_scanner_creates_directory() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let quarantine_path = temp_dir.path().join("nested").join("quarantine");
+
+        // Verify directory doesn't exist yet
+        assert!(!quarantine_path.exists());
+
+        let file = UploadedFile::new("malware.bin", "application/octet-stream", b"bad".to_vec());
+
+        let scanner = QuarantineScanner::new(
+            MockInfectedScanner::new("Test.Virus"),
+            quarantine_path.clone(),
+        );
+
+        scanner.scan(&file).await.unwrap();
+
+        // Verify directory was created
+        assert!(quarantine_path.exists());
+        assert!(quarantine_path.is_dir());
+    }
+
+    #[tokio::test]
+    async fn test_quarantine_scanner_unique_filenames() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let quarantine_path = temp_dir.path().to_path_buf();
+
+        let scanner = QuarantineScanner::new(
+            MockInfectedScanner::new("Test.Virus"),
+            quarantine_path.clone(),
+        );
+
+        // Quarantine two files with the same name
+        let file1 = UploadedFile::new("malware.exe", "application/octet-stream", b"bad1".to_vec());
+        let file2 = UploadedFile::new("malware.exe", "application/octet-stream", b"bad2".to_vec());
+
+        scanner.scan(&file1).await.unwrap();
+        scanner.scan(&file2).await.unwrap();
+
+        // Verify we have 4 files (2 data + 2 metadata)
+        let entries: Vec<_> = std::fs::read_dir(&quarantine_path)
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert_eq!(entries.len(), 4, "Should have 4 files (2 files + 2 metadata)");
+
+        // Verify all files have different names
+        let mut filenames: Vec<_> = entries
+            .iter()
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .collect();
+        filenames.sort();
+        filenames.dedup();
+        assert_eq!(filenames.len(), 4, "All quarantined files should have unique names");
+    }
+
+    #[tokio::test]
+    async fn test_quarantine_scanner_name() {
+        let scanner = QuarantineScanner::new(
+            NoOpScanner::new(),
+            std::path::PathBuf::from("/tmp/quarantine"),
+        );
+        assert_eq!(scanner.name(), "Quarantine Scanner");
+    }
+
+    #[tokio::test]
+    async fn test_quarantine_scanner_availability() {
+        let scanner = QuarantineScanner::new(
+            NoOpScanner::new(),
+            std::path::PathBuf::from("/tmp/quarantine"),
+        );
+        assert!(scanner.is_available().await);
+
+        // Test with unavailable inner scanner
+        let unavailable_scanner = QuarantineScanner::new(
+            MockInfectedScanner::new("test"),
+            std::path::PathBuf::from("/tmp/quarantine"),
+        );
+        assert!(unavailable_scanner.is_available().await);
     }
 }
