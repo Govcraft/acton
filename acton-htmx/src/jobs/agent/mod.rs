@@ -1,7 +1,7 @@
 //! Job processing agent using acton-reactive.
 
-mod messages;
-mod queue;
+pub(crate) mod messages;
+pub(crate) mod queue;
 
 pub use messages::{EnqueueJob, JobEnqueued, JobMetrics};
 
@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{debug, warn};
 
-use messages::*;
+use messages::{GetJobStatus, GetMetrics, JobStatusResponse};
 use queue::{JobQueue, QueuedJob};
 
 // Type alias for the ManagedAgent builder type
@@ -30,11 +30,11 @@ type JobAgentBuilder = ManagedAgent<Idle, JobAgent>;
 #[derive(Debug, Clone)]
 pub struct JobAgent {
     /// In-memory priority queue.
-    pub(crate) queue: Arc<RwLock<JobQueue>>,
+    queue: Arc<RwLock<JobQueue>>,
     /// Currently running jobs.
-    pub(crate) running: Arc<RwLock<HashMap<JobId, JobStatus>>>,
+    running: Arc<RwLock<HashMap<JobId, JobStatus>>>,
     /// Job metrics.
-    pub(crate) metrics: Arc<RwLock<JobMetrics>>,
+    metrics: Arc<RwLock<JobMetrics>>,
 }
 
 impl Default for JobAgent {
@@ -93,7 +93,7 @@ impl JobAgent {
                 };
 
                 // Add to in-memory queue
-                let result = agent.model.queue.write().enqueue(queued_job.clone());
+                let result = agent.model.queue.write().enqueue(queued_job);
 
                 match result {
                     Ok(()) => {
@@ -118,13 +118,16 @@ impl JobAgent {
                 let reply_envelope = envelope.reply_envelope();
 
                 // Clone data from agent before moving into async
-                let status = if let Some(status) = agent.model.running.read().get(&msg.id) {
-                    Some(status.clone())
-                } else if agent.model.queue.read().contains(&msg.id) {
-                    Some(JobStatus::Pending)
-                } else {
-                    None
-                };
+                let status = agent.model.running.read().get(&msg.id).map_or_else(
+                    || {
+                        if agent.model.queue.read().contains(&msg.id) {
+                            Some(JobStatus::Pending)
+                        } else {
+                            None
+                        }
+                    },
+                    |status| Some(status.clone()),
+                );
 
                 Box::pin(async move {
                     let response = JobStatusResponse {

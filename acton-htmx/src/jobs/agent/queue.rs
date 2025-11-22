@@ -9,7 +9,7 @@ use std::time::Duration;
 
 /// A job in the queue.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct QueuedJob {
+pub(super) struct QueuedJob {
     /// Unique job identifier.
     pub id: JobId,
     /// Job type name.
@@ -64,7 +64,7 @@ impl Ord for QueueEntry {
 
 /// Priority-based job queue.
 #[derive(Debug)]
-pub(crate) struct JobQueue {
+pub(super) struct JobQueue {
     /// Binary heap for priority ordering.
     heap: BinaryHeap<QueueEntry>,
     /// Set of job IDs for O(1) contains check.
