@@ -4,8 +4,10 @@
 //! HTMX-specific components.
 
 use crate::agents::{CsrfManagerAgent, SessionManagerAgent};
+use crate::oauth2::OAuth2Agent;
 use crate::{config::ActonHtmxConfig, observability::ObservabilityConfig};
 use acton_reactive::prelude::{AgentHandle, AgentRuntime};
+use sqlx::PgPool;
 use std::sync::Arc;
 
 /// Application state for acton-htmx applications
@@ -63,6 +65,16 @@ pub struct ActonHtmxState {
     ///
     /// Clone this freely - `AgentHandle` is designed for concurrent access
     csrf_manager: AgentHandle,
+
+    /// OAuth2 manager agent handle
+    ///
+    /// Clone this freely - `AgentHandle` is designed for concurrent access
+    oauth2_manager: AgentHandle,
+
+    /// Database connection pool
+    ///
+    /// Shared across all requests for efficient connection management
+    database_pool: Option<Arc<PgPool>>,
 }
 
 impl ActonHtmxState {
@@ -93,12 +105,15 @@ impl ActonHtmxState {
         let observability = ObservabilityConfig::default();
         let session_manager = SessionManagerAgent::spawn(runtime).await?;
         let csrf_manager = CsrfManagerAgent::spawn(runtime).await?;
+        let oauth2_manager = OAuth2Agent::spawn(runtime).await?;
 
         Ok(Self {
             config: Arc::new(config),
             observability: Arc::new(observability),
             session_manager,
             csrf_manager,
+            oauth2_manager,
+            database_pool: None,
         })
     }
 
@@ -130,12 +145,15 @@ impl ActonHtmxState {
         let observability = ObservabilityConfig::new("acton-htmx");
         let session_manager = SessionManagerAgent::spawn(runtime).await?;
         let csrf_manager = CsrfManagerAgent::spawn(runtime).await?;
+        let oauth2_manager = OAuth2Agent::spawn(runtime).await?;
 
         Ok(Self {
             config: Arc::new(config),
             observability: Arc::new(observability),
             session_manager,
             csrf_manager,
+            oauth2_manager,
+            database_pool: None,
         })
     }
 
@@ -201,6 +219,58 @@ impl ActonHtmxState {
     #[must_use]
     pub const fn csrf_manager(&self) -> &AgentHandle {
         &self.csrf_manager
+    }
+
+    /// Get the OAuth2 manager agent handle
+    ///
+    /// Use this to send OAuth2-related messages directly to the agent.
+    /// For most use cases, prefer using the OAuth2 handlers and extractors.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use acton_htmx::oauth2::{GenerateState, ValidateState, OAuthProvider};
+    ///
+    /// async fn handler(State(state): State<ActonHtmxState>) {
+    ///     let oauth_state = state.oauth2_agent()
+    ///         .ask(GenerateState { provider: OAuthProvider::Google })
+    ///         .await?;
+    /// }
+    /// ```
+    #[must_use]
+    pub const fn oauth2_agent(&self) -> &AgentHandle {
+        &self.oauth2_manager
+    }
+
+    /// Get the database connection pool
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// async fn handler(State(state): State<ActonHtmxState>) {
+    ///     let pool = state.database_pool();
+    ///     let users = sqlx::query_as("SELECT * FROM users")
+    ///         .fetch_all(pool)
+    ///         .await?;
+    /// }
+    /// ```
+    #[must_use]
+    pub fn database_pool(&self) -> &PgPool {
+        self.database_pool
+            .as_ref()
+            .expect("Database pool not initialized")
+    }
+
+    /// Set the database connection pool
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let pool = PgPool::connect(&database_url).await?;
+    /// state.set_database_pool(pool);
+    /// ```
+    pub fn set_database_pool(&mut self, pool: PgPool) {
+        self.database_pool = Some(Arc::new(pool));
     }
 }
 

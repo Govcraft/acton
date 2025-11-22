@@ -54,6 +54,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use crate::oauth2::types::OAuthConfig;
+
 /// HTMX-specific configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -171,6 +173,10 @@ pub struct ActonHtmxConfig {
     /// Security settings
     #[serde(default)]
     pub security: SecuritySettings,
+
+    /// OAuth2 configuration
+    #[serde(default)]
+    pub oauth2: OAuthConfig,
 
     /// Feature flags
     #[serde(default)]

@@ -273,7 +273,7 @@ All Week 12 deliverables completed:
 - ✅ Documentation complete and comprehensive
 - ✅ Generated code is idiomatic and exemplary
 
-## Phase 2 Progress (Weeks 7-9)
+## Phase 2 Progress (Weeks 7-11)
 
 **Week 7: File Upload Foundation** ✅
 - ✅ FileStorage trait - Backend-agnostic file operations
@@ -430,3 +430,48 @@ let email = Email::from_template(&template)?
 - All backends share the same `EmailSender` trait for easy swapping
 - Email validation happens before sending (comprehensive checks)
 - Custom headers support deferred (requires lettre-specific header types)
+
+**Week 11: OAuth2 Integration** ⚠️ In Progress
+- ✅ OAuth2 architecture designed
+  - OAuthProvider enum (Google, GitHub, OIDC)
+  - OAuthConfig for provider configuration
+  - OAuthState for CSRF protection with expiration
+  - OAuthToken and OAuthUserInfo types
+- ✅ OAuth2Agent for state management
+  - acton-reactive agent for CSRF token generation/validation
+  - State token expiration (10 minutes)
+  - Automatic cleanup of expired tokens
+  - Web handler pattern with response channels
+- ✅ Provider implementations started
+  - GoogleProvider (OpenID Connect discovery)
+  - GitHubProvider (OAuth2 API)
+  - OidcProvider (generic OIDC)
+  - PKCE support for all providers
+- ✅ Database migration created
+  - `oauth_accounts` table for account linking
+  - Support for multiple providers per user
+  - Unique constraint on provider + provider_user_id
+- ✅ Configuration integration
+  - OAuth2Config added to ActonHtmxConfig
+  - Provider-specific configuration support
+- ⚠️ **Requires oauth2 crate API updates**
+  - Current code uses oauth2 4.x API patterns
+  - oauth2 5.0.0 has breaking API changes:
+    - `BasicClient::new()` signature changed
+    - Client builder pattern modified
+    - HTTP client integration refactored
+  - **Action needed**: Update provider implementations for oauth2 5.0 compatibility
+
+**Dependencies Added**:
+- `oauth2 = "5.0.0"` - OAuth2 client library
+- `openidconnect = "4.0.1"` - OpenID Connect support
+- `hex = "0.4.3"` - For state token encoding
+
+**Status**: OAuth2 foundation complete, provider implementations need oauth2 5.0 refactoring
+
+**Next Steps**:
+1. Complete oauth2 5.0 API migration for all providers
+2. Implement OAuth2 handlers (initiate, callback, unlink)
+3. Create account linking UI and templates
+4. Add comprehensive OAuth2 tests
+5. Document OAuth2 setup and configuration

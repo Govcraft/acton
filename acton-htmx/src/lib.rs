@@ -72,6 +72,7 @@ pub mod extractors;
 pub mod forms;
 pub mod htmx;
 pub mod jobs;
+pub mod oauth2;
 pub mod observability;
 pub mod state;
 pub mod storage;
@@ -166,6 +167,13 @@ pub mod prelude {
     pub use crate::email::{
         AwsSesBackend, ConsoleBackend, Email, EmailError, EmailSender, EmailTemplate,
         SendEmailJob, SimpleEmailTemplate, SmtpBackend,
+    };
+
+    // OAuth2 authentication
+    pub use crate::oauth2::{
+        GitHubProvider, GoogleProvider, OAuthAccount, OAuthConfig, OAuthError, OAuthProvider,
+        OAuthState, OAuthToken, OAuthUserInfo, OidcProvider, ProviderConfig,
+        OAuth2Agent, initiate_oauth, handle_oauth_callback, unlink_oauth_account,
     };
 
     // Re-export key dependencies
