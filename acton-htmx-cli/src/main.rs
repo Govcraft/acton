@@ -11,7 +11,7 @@ pub mod templates;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use commands::{DbCommand, DevCommand, GenerateCommand, JobsCommand, NewCommand, ScaffoldCommand};
+use commands::{DbCommand, DevCommand, GenerateCommand, JobsCommand, NewCommand, OAuth2Command, ScaffoldCommand};
 
 // Re-export for library usage
 pub use templates::ProjectTemplate;
@@ -66,6 +66,11 @@ enum ScaffoldCommands {
         #[arg(required = true)]
         fields: Vec<String>,
     },
+    /// Set up `OAuth2` authentication for a provider
+    OAuth2 {
+        /// Provider name (google, github, oidc)
+        provider: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -104,6 +109,10 @@ fn main() -> Result<()> {
             match command {
                 ScaffoldCommands::Crud { model, fields } => {
                     let cmd = ScaffoldCommand::new(model, fields);
+                    cmd.execute()?;
+                }
+                ScaffoldCommands::OAuth2 { provider } => {
+                    let cmd = OAuth2Command::new(provider);
                     cmd.execute()?;
                 }
             }
