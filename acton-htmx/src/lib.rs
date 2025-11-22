@@ -70,6 +70,7 @@ pub mod email;
 pub mod error;
 pub mod extractors;
 pub mod forms;
+pub mod handlers;
 pub mod htmx;
 pub mod jobs;
 pub mod oauth2;

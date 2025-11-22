@@ -12,6 +12,8 @@
 pub mod auth;
 #[cfg(feature = "cedar")]
 pub mod cedar;
+#[cfg(feature = "cedar")]
+pub mod cedar_template;
 pub mod csrf;
 pub mod file_serving;
 pub mod security_headers;
@@ -23,6 +25,9 @@ pub use auth::{AuthMiddleware, AuthMiddlewareError};
 #[cfg(feature = "cedar")]
 #[allow(unused_imports)]
 pub use cedar::{CedarAuthz, CedarAuthzBuilder, CedarError};
+#[cfg(feature = "cedar")]
+#[allow(unused_imports)]
+pub use cedar_template::{AuthzContext, AuthzContextBuilder};
 #[allow(unused_imports)]
 pub use csrf::{
     CsrfConfig, CsrfLayer, CsrfMiddleware, CSRF_FORM_FIELD, CSRF_HEADER_NAME,

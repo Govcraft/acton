@@ -93,27 +93,133 @@ pub enum CedarError {
 
 #[cfg(feature = "cedar")]
 impl IntoResponse for CedarError {
+    #[allow(clippy::too_many_lines)] // Inline HTML template, acceptable
     fn into_response(self) -> Response {
-        let (status, message) = match self {
+        use axum::http::header;
+
+        let (status, message, redirect_to_login) = match self {
             Self::Forbidden(_) => (
                 StatusCode::FORBIDDEN,
                 "Access denied. You do not have permission to perform this action.",
+                false,
             ),
             Self::Unauthorized(_) => (
                 StatusCode::UNAUTHORIZED,
                 "Authentication required. Please sign in.",
+                true,
             ),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "An internal error occurred.",
+                false,
             ),
         };
 
         tracing::error!(error = ?self, "Cedar authorization error");
 
-        // For HTMX requests, return partial with HxRedirect to login
-        // For regular requests, return status code with message
-        (status, message).into_response()
+        // For unauthorized (not authenticated), redirect to login via HX-Redirect header
+        if redirect_to_login {
+            return axum::response::Response::builder()
+                .status(status)
+                .header("HX-Redirect", "/auth/login")
+                .body(Body::empty())
+                .unwrap_or_else(|_| (status, message).into_response());
+        }
+
+        // For forbidden (authenticated but not authorized), return 403 with message
+        // Build HTML response that works for both HTMX and full page requests
+        let html = format!(
+            r#"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{status} - Access Denied</title>
+    <style>
+        body {{
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }}
+        .error-container {{
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            padding: 3rem;
+            text-align: center;
+            max-width: 500px;
+            margin: 2rem;
+        }}
+        h1 {{
+            color: #dc2626;
+            font-size: 4rem;
+            margin: 0 0 1rem 0;
+            font-weight: 700;
+        }}
+        h2 {{
+            color: #374151;
+            font-size: 1.5rem;
+            margin: 0 0 1rem 0;
+            font-weight: 600;
+        }}
+        p {{
+            color: #6b7280;
+            line-height: 1.6;
+            margin: 0 0 2rem 0;
+        }}
+        .actions {{
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }}
+        a {{
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+        }}
+        .primary {{
+            background: #667eea;
+            color: white;
+        }}
+        .primary:hover {{
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }}
+        .secondary {{
+            background: #e5e7eb;
+            color: #374151;
+        }}
+        .secondary:hover {{
+            background: #d1d5db;
+        }}
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1>{status}</h1>
+        <h2>Access Denied</h2>
+        <p>{message}</p>
+        <div class="actions">
+            <a href="javascript:history.back()" class="secondary">Go Back</a>
+            <a href="/" class="primary">Return Home</a>
+        </div>
+    </div>
+</body>
+</html>"#,
+            status = status.as_u16(),
+            message = message
+        );
+
+        (status, [(header::CONTENT_TYPE, "text/html; charset=utf-8")], html).into_response()
     }
 }
 
@@ -259,6 +365,7 @@ impl CedarAuthz {
     /// 4. Builds Cedar principal, action, context
     /// 5. Evaluates policies
     /// 6. Returns 403 if denied, continues if allowed
+    #[allow(clippy::cognitive_complexity)] // Middleware with multiple validation steps
     pub async fn middleware(
         State(authz): State<Self>,
         request: Request<Body>,
@@ -312,9 +419,33 @@ impl CedarAuthz {
                 .is_authorized(&cedar_request, &policy_set, &entities)
         };
 
+        // Debug logging: Log all policy evaluations in debug mode
+        if tracing::enabled!(tracing::Level::DEBUG) {
+            tracing::debug!(
+                principal = ?principal,
+                action = ?action,
+                resource = ?resource,
+                decision = ?response.decision(),
+                user_id = user.id,
+                user_email = %user.email,
+                user_roles = ?user.roles,
+                user_permissions = ?user.permissions,
+                diagnostics = ?response.diagnostics(),
+                "Cedar policy evaluation completed"
+            );
+        }
+
         // Handle decision
         match response.decision() {
             Decision::Allow => {
+                // Log successful authorization at trace level
+                tracing::trace!(
+                    principal = ?principal,
+                    action = ?action,
+                    user_id = user.id,
+                    "Cedar policy allowed request"
+                );
+
                 // Allow request to proceed
                 Ok(next.run(request).await)
             }
@@ -323,6 +454,9 @@ impl CedarAuthz {
                     principal = ?principal,
                     action = ?action,
                     user_id = user.id,
+                    user_email = %user.email,
+                    user_roles = ?user.roles,
+                    diagnostics = ?response.diagnostics(),
                     "Cedar policy denied request"
                 );
 
@@ -357,6 +491,183 @@ impl CedarAuthz {
             self.config.policy_path.display()
         );
         Ok(())
+    }
+
+    /// Check if a user can perform a specific action
+    ///
+    /// This is a programmatic helper for authorization checks in handlers and templates.
+    /// It evaluates Cedar policies for the given user, action string, and optional resource.
+    ///
+    /// # Arguments
+    ///
+    /// * `user` - The authenticated user
+    /// * `action` - Action string in the format "METHOD /path" (e.g., "PUT /posts/{id}")
+    /// * `resource_id` - Optional resource ID for ownership checks (future use)
+    ///
+    /// # Returns
+    ///
+    /// Returns `true` if the user is authorized, `false` otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// // In a handler
+    /// if cedar.can_perform(user, "DELETE /posts/{id}", None).await {
+    ///     // User can delete posts
+    /// }
+    ///
+    /// // With resource ownership check (future)
+    /// if cedar.can_perform(user, "PUT /posts/{id}", Some(post_id)).await {
+    ///     // User can update this specific post
+    /// }
+    /// ```
+    #[allow(clippy::cognitive_complexity)] // Multiple Cedar request building steps
+    pub async fn can_perform(
+        &self,
+        user: &User,
+        action: &str,
+        #[allow(unused_variables)] resource_id: Option<i64>,
+    ) -> bool {
+        // If Cedar is disabled, allow all actions
+        if !self.config.enabled {
+            return true;
+        }
+
+        // Build Cedar request components
+        let principal = match build_principal(user) {
+            Ok(p) => p,
+            Err(e) => {
+                tracing::error!(error = ?e, "Failed to build principal for can_perform");
+                return false;
+            }
+        };
+
+        let action_entity = match parse_action_string(action) {
+            Ok(a) => a,
+            Err(e) => {
+                tracing::error!(error = ?e, action = %action, "Failed to parse action for can_perform");
+                return false;
+            }
+        };
+
+        // Build resource (generic for now, can be extended for typed resources)
+        let resource = match build_resource() {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!(error = ?e, "Failed to build resource for can_perform");
+                return false;
+            }
+        };
+
+        // Build context with user attributes
+        let context = match build_context_for_user(user) {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::error!(error = ?e, "Failed to build context for can_perform");
+                return false;
+            }
+        };
+
+        // Create Cedar authorization request
+        let cedar_request = match CedarRequest::new(principal.clone(), action_entity.clone(), resource, context, None) {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!(error = ?e, "Failed to create Cedar request for can_perform");
+                return false;
+            }
+        };
+
+        // Build entities
+        let entities = match build_entities(user) {
+            Ok(e) => e,
+            Err(e) => {
+                tracing::error!(error = ?e, "Failed to build entities for can_perform");
+                return false;
+            }
+        };
+
+        // Evaluate policies
+        let response = {
+            let policy_set = self.policy_set.read().await;
+            self.authorizer
+                .is_authorized(&cedar_request, &policy_set, &entities)
+        };
+
+        // Return true if allowed, false otherwise
+        matches!(response.decision(), Decision::Allow)
+    }
+
+    /// Convenience method: Check if user can update a resource
+    ///
+    /// Checks if the user can perform a PUT operation on the given resource path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// if cedar.can_update(user, "/posts/{id}").await {
+    ///     // Show edit button
+    /// }
+    /// ```
+    pub async fn can_update(&self, user: &User, resource_path: &str) -> bool {
+        self.can_perform(user, &format!("PUT {resource_path}"), None)
+            .await
+    }
+
+    /// Convenience method: Check if user can delete a resource
+    ///
+    /// Checks if the user can perform a DELETE operation on the given resource path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// if cedar.can_delete(user, "/posts/{id}").await {
+    ///     // Show delete button
+    /// }
+    /// ```
+    pub async fn can_delete(&self, user: &User, resource_path: &str) -> bool {
+        self.can_perform(user, &format!("DELETE {resource_path}"), None)
+            .await
+    }
+
+    /// Convenience method: Check if user can create a resource
+    ///
+    /// Checks if the user can perform a POST operation on the given resource path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// if cedar.can_create(user, "/posts").await {
+    ///     // Show create button
+    /// }
+    /// ```
+    pub async fn can_create(&self, user: &User, resource_path: &str) -> bool {
+        self.can_perform(user, &format!("POST {resource_path}"), None)
+            .await
+    }
+
+    /// Convenience method: Check if user can read a resource
+    ///
+    /// Checks if the user can perform a GET operation on the given resource path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// if cedar.can_read(user, "/posts/{id}").await {
+    ///     // Show content
+    /// }
+    /// ```
+    pub async fn can_read(&self, user: &User, resource_path: &str) -> bool {
+        self.can_perform(user, &format!("GET {resource_path}"), None)
+            .await
+    }
+
+    /// Get a reference to the Cedar configuration
+    ///
+    /// This method provides read-only access to the Cedar configuration.
+    /// Useful for admin endpoints that need to display current configuration.
+    #[must_use]
+    pub fn config(&self) -> &CedarConfig {
+        &self.config
     }
 }
 
@@ -555,6 +866,55 @@ fn build_entities(user: &User) -> Result<Entities, CedarError> {
         .map_err(|e| CedarError::Internal(format!("Failed to build entities: {e}")))
 }
 
+/// Parse action string into Cedar EntityUid
+///
+/// Takes action string like "PUT /posts/{id}" and converts it to Cedar action entity.
+#[cfg(feature = "cedar")]
+fn parse_action_string(action: &str) -> Result<EntityUid, CedarError> {
+    let action_str = format!(r#"Action::"{action}""#);
+    action_str
+        .parse()
+        .map_err(|e| CedarError::Internal(format!("Failed to parse action '{action}': {e}")))
+}
+
+/// Build Cedar context from user alone (for programmatic checks)
+///
+/// Similar to `build_context_http` but without HTTP headers.
+/// Used by `can_perform` and template helpers.
+#[cfg(feature = "cedar")]
+fn build_context_for_user(user: &User) -> Result<Context, CedarError> {
+    let mut context_map = serde_json::Map::new();
+
+    // Add user roles
+    context_map.insert("roles".to_string(), json!(user.roles));
+
+    // Add user permissions
+    context_map.insert("permissions".to_string(), json!(user.permissions));
+
+    // Add user email
+    context_map.insert("email".to_string(), json!(user.email.as_str()));
+
+    // Add user ID
+    context_map.insert("user_id".to_string(), json!(user.id));
+
+    // Add email verification status
+    context_map.insert("verified".to_string(), json!(user.email_verified));
+
+    // Add timestamp (current time for programmatic checks)
+    let now = chrono::Utc::now();
+    context_map.insert(
+        "timestamp".to_string(),
+        json!({
+            "unix": now.timestamp(),
+            "hour": now.hour(),
+            "dayOfWeek": now.weekday().to_string(),
+        }),
+    );
+
+    Context::from_json_value(serde_json::Value::Object(context_map), None)
+        .map_err(|e| CedarError::Internal(format!("Failed to build context for user: {e}")))
+}
+
 #[cfg(test)]
 #[cfg(feature = "cedar")]
 mod tests {
@@ -572,4 +932,94 @@ mod tests {
         );
         assert_eq!(normalize_path_generic("/api/v1/posts"), "/api/v1/posts");
     }
+
+    #[test]
+    fn test_normalize_path_multiple_ids() {
+        assert_eq!(
+            normalize_path_generic("/api/posts/123/comments/456"),
+            "/api/posts/{id}/comments/{id}"
+        );
+    }
+
+    #[test]
+    fn test_parse_action_string() {
+        let result = parse_action_string("GET /posts");
+        assert!(result.is_ok());
+
+        let result = parse_action_string("PUT /posts/{id}");
+        assert!(result.is_ok());
+
+        let result = parse_action_string("DELETE /posts/{id}");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_build_principal() {
+        use crate::auth::user::EmailAddress;
+
+        let user = User {
+            id: 123,
+            email: EmailAddress::parse("test@example.com").unwrap(),
+            password_hash: "hash".to_string(),
+            roles: vec!["user".to_string()],
+            permissions: vec![],
+            email_verified: true,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+
+        let principal = build_principal(&user);
+        assert!(principal.is_ok());
+
+        let principal = principal.unwrap();
+        assert_eq!(principal.to_string(), r#"User::"123""#);
+    }
+
+    #[test]
+    fn test_build_context_for_user() {
+        use crate::auth::user::EmailAddress;
+
+        let user = User {
+            id: 123,
+            email: EmailAddress::parse("test@example.com").unwrap(),
+            password_hash: "hash".to_string(),
+            roles: vec!["user".to_string(), "moderator".to_string()],
+            permissions: vec!["read:posts".to_string()],
+            email_verified: true,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+
+        let context = build_context_for_user(&user);
+        assert!(context.is_ok());
+    }
+
+    #[test]
+    fn test_build_entities() {
+        use crate::auth::user::EmailAddress;
+
+        let user = User {
+            id: 123,
+            email: EmailAddress::parse("test@example.com").unwrap(),
+            password_hash: "hash".to_string(),
+            roles: vec!["user".to_string(), "admin".to_string()],
+            permissions: vec!["write:posts".to_string()],
+            email_verified: true,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+
+        let entities = build_entities(&user);
+        assert!(entities.is_ok());
+    }
+
+    #[test]
+    fn test_build_resource() {
+        let resource = build_resource();
+        assert!(resource.is_ok());
+        assert_eq!(resource.unwrap().to_string(), r#"Resource::"default""#);
+    }
+
+    // Integration tests for policy evaluation would require a full Cedar setup
+    // with policy files and async runtime, so they should be in integration tests
 }
