@@ -1,0 +1,221 @@
+groups:
+  - name: application_alerts
+    interval: 30s
+    rules:
+      # Application availability
+      - alert: ApplicationDown
+        expr: up{job="acton-htmx"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: application
+        annotations:
+          summary: "Application instance is down"
+          description: "{{ $labels.instance }} has been down for more than 1 minute."
+          runbook_url: "https://docs.example.com/runbooks/application-down"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: application
+        annotations:
+          summary: "High HTTP error rate detected"
+          description: "Error rate is {{ $value | humanize }} errors/sec on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/high-error-rate"
+
+      - alert: HighResponseTime
+        expr: (rate(http_request_duration_ms_total[5m]) / rate(http_requests_total[5m])) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: application
+        annotations:
+          summary: "High HTTP response time"
+          description: "Average response time is {{ $value | humanizeNumber }}ms on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/high-response-time"
+
+      # Background jobs
+      - alert: JobQueueGrowing
+        expr: rate(jobs_enqueued_total[5m]) - rate(jobs_completed_total[5m]) > 10
+        for: 10m
+        labels:
+          severity: warning
+          component: jobs
+        annotations:
+          summary: "Job queue is growing"
+          description: "Job queue is growing at {{ $value | humanizeNumber }} jobs/sec on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/job-queue-growing"
+
+      - alert: HighJobFailureRate
+        expr: (rate(jobs_failed_total[5m]) / rate(jobs_enqueued_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: jobs
+        annotations:
+          summary: "High job failure rate"
+          description: "Job failure rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/high-job-failure-rate"
+
+      - alert: NoJobsProcessed
+        expr: rate(jobs_completed_total[15m]) == 0 and rate(jobs_enqueued_total[15m]) > 0
+        for: 15m
+        labels:
+          severity: critical
+          component: jobs
+        annotations:
+          summary: "No jobs are being processed"
+          description: "Jobs are being enqueued but none are completing on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/jobs-not-processing"
+
+      # Sessions
+      - alert: HighActiveSessions
+        expr: sessions_active > 10000
+        for: 5m
+        labels:
+          severity: warning
+          component: sessions
+        annotations:
+          summary: "High number of active sessions"
+          description: "{{ $value | humanizeNumber }} active sessions on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/high-sessions"
+
+  - name: system_alerts
+    interval: 30s
+    rules:
+      # CPU
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/high-cpu"
+
+      - alert: CriticalCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 95
+        for: 2m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Critical CPU usage"
+          description: "CPU usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/critical-cpu"
+
+      # Memory
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/high-memory"
+
+      - alert: CriticalMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Critical memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/critical-memory"
+
+      # Disk
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "Disk space low"
+          description: "Disk space is {{ $value | humanizePercentage }} available on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/low-disk-space"
+
+      - alert: DiskSpaceCritical
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 5
+        for: 2m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Disk space critical"
+          description: "Disk space is {{ $value | humanizePercentage }} available on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/critical-disk-space"
+
+  - name: database_alerts
+    interval: 30s
+    rules:
+      # Database availability
+      - alert: DatabaseDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database is down"
+          description: "PostgreSQL database is down on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/database-down"
+
+      # Connection pool
+      - alert: DatabasePoolExhausted
+        expr: pg_stat_activity_count >= pg_settings_max_connections * 0.9
+        for: 2m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database connection pool exhausted"
+          description: "{{ $value | humanizeNumber }} connections out of {{ pg_settings_max_connections }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/pool-exhausted"
+
+      # Query performance
+      - alert: SlowQueries
+        expr: rate(pg_stat_statements_mean_exec_time_seconds[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Average query time is {{ $value | humanizeDuration }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/slow-queries"
+
+  - name: cache_alerts
+    interval: 30s
+    rules:
+      # Redis availability
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache is down on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/redis-down"
+
+      # Memory usage
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Redis memory usage high"
+          description: "Redis is using {{ $value | humanizePercentage }} of allocated memory on {{ $labels.instance }}"
+          runbook_url: "https://docs.example.com/runbooks/redis-memory-high"

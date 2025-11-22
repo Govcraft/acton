@@ -11,7 +11,7 @@ pub mod templates;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use commands::{DbCommand, DevCommand, GenerateCommand, JobsCommand, NewCommand, OAuth2Command, ScaffoldCommand};
+use commands::{DbCommand, DeployCommand, DevCommand, GenerateCommand, JobsCommand, NewCommand, OAuth2Command, ScaffoldCommand};
 
 // Re-export for library usage
 pub use templates::ProjectTemplate;
@@ -53,6 +53,17 @@ enum Commands {
     Jobs {
         #[command(subcommand)]
         command: JobsCommand,
+    },
+    /// Deploy to production
+    Deploy {
+        #[command(subcommand)]
+        command: DeployCommand,
+    },
+    /// Check application health
+    HealthCheck {
+        /// Health check URL (default: <http://localhost:8080/health>)
+        #[arg(long, default_value = "http://localhost:8080/health")]
+        url: String,
     },
 }
 
@@ -123,7 +134,61 @@ fn main() -> Result<()> {
         Commands::Jobs { command } => {
             command.execute()?;
         }
+        Commands::Deploy { command } => {
+            command.execute()?;
+        }
+        Commands::HealthCheck { url } => {
+            health_check(&url)?;
+        }
     }
 
     Ok(())
+}
+
+/// Check application health
+fn health_check(url: &str) -> Result<()> {
+    use console::{style, Emoji};
+
+    static CHECKING: Emoji = Emoji("🔍", ">>>");
+    static SUCCESS: Emoji = Emoji("✓", "√");
+    static ERROR: Emoji = Emoji("✗", "x");
+
+    println!("{} Checking application health at: {}", CHECKING, style(url).cyan());
+    println!();
+
+    // Make HTTP request (ureq 3.x call() returns Result with timeout handling)
+    let response = ureq::get(url).call();
+
+    match response {
+        Ok(mut resp) => {
+            let status = resp.status();
+            let body = resp.body_mut().read_to_string().unwrap_or_else(|_| "Could not read response".to_string());
+
+            if status == 200 {
+                println!("  {SUCCESS} Application is healthy (HTTP {status})");
+                println!();
+                println!("{}", style("Response:").bold());
+                println!("{body}");
+                println!();
+                Ok(())
+            } else {
+                println!("  {ERROR} Application health check failed (HTTP {status})");
+                println!();
+                println!("{}", style("Response:").bold());
+                println!("{body}");
+                println!();
+                anyhow::bail!("Health check returned status: {status}");
+            }
+        }
+        Err(e) => {
+            println!("  {ERROR} Health check failed: {e}");
+            println!();
+            println!("Possible issues:");
+            println!("  - Application is not running");
+            println!("  - Wrong URL (check host and port)");
+            println!("  - Health endpoint not configured");
+            println!();
+            anyhow::bail!("Could not reach health endpoint");
+        }
+    }
 }

@@ -71,6 +71,7 @@ pub mod error;
 pub mod extractors;
 pub mod forms;
 pub mod handlers;
+pub mod health;
 pub mod htmx;
 pub mod jobs;
 pub mod oauth2;
@@ -88,7 +89,6 @@ pub mod middleware;
 // Internal modules (not re-exported, implementation details)
 mod cache;
 mod database;
-mod health;
 mod security;
 
 #[cfg(test)]

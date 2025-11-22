@@ -3,7 +3,7 @@
 //! Provides structured logging, distributed tracing, and metrics collection
 //! via OpenTelemetry integration.
 
-#![allow(dead_code)]
+pub mod metrics;
 
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
