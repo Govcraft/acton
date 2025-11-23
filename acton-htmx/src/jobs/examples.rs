@@ -147,10 +147,10 @@ impl Job for GenerateReportJob {
         //     // ...
         // }
 
-        // Simulate report generation
+        // Simulate report generation (reduced duration for tests)
         for i in 1..=10 {
             tracing::debug!(progress = i * 10, "Report generation progress");
-            tokio::time::sleep(Duration::from_secs(1)).await;
+            tokio::time::sleep(Duration::from_millis(100)).await;
         }
 
         let file_path = format!(
