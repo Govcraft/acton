@@ -97,13 +97,17 @@ pub trait Job: Send + Sync + Serialize + for<'de> Deserialize<'de> + 'static {
 
     /// Execute the job.
     ///
-    /// This will be fully implemented in Week 5 when job execution is added.
+    /// Jobs receive a [`JobContext`](crate::jobs::JobContext) providing access to:
+    /// - Email sender for sending transactional emails
+    /// - Database pool for queries
+    /// - File storage for file operations
+    /// - Redis pool for caching (optional, feature-gated)
     ///
     /// # Errors
     ///
     /// Returns an error if the job execution fails. The job will be retried
     /// according to `max_retries()` with exponential backoff.
-    async fn execute(&self) -> JobResult<Self::Result>;
+    async fn execute(&self, ctx: &super::JobContext) -> JobResult<Self::Result>;
 
     /// Maximum number of retry attempts.
     ///

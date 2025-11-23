@@ -1,6 +1,6 @@
 //! Example background jobs demonstrating common use cases
 
-use crate::jobs::{Job, JobResult};
+use crate::jobs::{Job, JobContext, JobResult};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -38,7 +38,7 @@ pub struct WelcomeEmailJob {
 impl Job for WelcomeEmailJob {
     type Result = ();
 
-    async fn execute(&self) -> JobResult<Self::Result> {
+    async fn execute(&self, _ctx: &JobContext) -> JobResult<Self::Result> {
         tracing::info!(
             user_id = self.user_id,
             email = %self.email,
@@ -46,14 +46,18 @@ impl Job for WelcomeEmailJob {
             "Sending welcome email"
         );
 
-        // TODO: Implement actual email sending
-        // Example:
-        // email_client.send(
-        //     Email::new()
+        // TODO: Implement actual email sending with template system
+        // Example with JobContext:
+        // if let Some(email_sender) = ctx.email_sender() {
+        //     let email = Email::new()
         //         .to(&self.email)
-        //         .template("welcome")
-        //         .data(json!({ "username": self.username }))
-        // ).await?;
+        //         .from("noreply@myapp.com")
+        //         .subject(&format!("Welcome, {}!", self.username))
+        //         .text(&format!("Welcome to our app, {}!", self.username));
+        //
+        //     email_sender.send(email).await
+        //         .map_err(|e| JobError::ExecutionFailed(e.to_string()))?;
+        // }
 
         // Simulate email sending delay
         tokio::time::sleep(Duration::from_millis(100)).await;
@@ -118,7 +122,7 @@ pub struct GenerateReportJob {
 impl Job for GenerateReportJob {
     type Result = String; // Returns report file path
 
-    async fn execute(&self) -> JobResult<Self::Result> {
+    async fn execute(&self, _ctx: &JobContext) -> JobResult<Self::Result> {
         tracing::info!(
             report_id = self.report_id,
             user_id = self.user_id,
@@ -127,6 +131,21 @@ impl Job for GenerateReportJob {
             end_date = %self.end_date,
             "Generating report"
         );
+
+        // TODO: Implement actual report generation
+        // Example with JobContext:
+        // if let Some(db_pool) = ctx.database_pool() {
+        //     let data = sqlx::query!(
+        //         "SELECT * FROM sales WHERE date BETWEEN $1 AND $2",
+        //         self.start_date, self.end_date
+        //     )
+        //     .fetch_all(db_pool.as_ref())
+        //     .await
+        //     .map_err(|e| JobError::ExecutionFailed(e.to_string()))?;
+        //
+        //     // Generate PDF from data
+        //     // ...
+        // }
 
         // Simulate report generation
         for i in 1..=10 {
@@ -194,7 +213,7 @@ pub struct CleanupOldDataJob {
 impl Job for CleanupOldDataJob {
     type Result = usize; // Returns number of records deleted
 
-    async fn execute(&self) -> JobResult<Self::Result> {
+    async fn execute(&self, _ctx: &JobContext) -> JobResult<Self::Result> {
         tracing::info!(
             days_old = self.days_old,
             batch_size = self.batch_size,
@@ -203,6 +222,32 @@ impl Job for CleanupOldDataJob {
         );
 
         let mut total_deleted = 0_usize;
+
+        // TODO: Implement actual deletion with database
+        // Example with JobContext:
+        // if let Some(db_pool) = ctx.database_pool() {
+        //     let cutoff_date = chrono::Utc::now() - chrono::Duration::days(i64::from(self.days_old));
+        //
+        //     loop {
+        //         let result = sqlx::query!(
+        //             "DELETE FROM events WHERE created_at < $1
+        //              AND id IN (SELECT id FROM events WHERE created_at < $1 LIMIT $2)",
+        //             cutoff_date,
+        //             self.batch_size as i64
+        //         )
+        //         .execute(db_pool.as_ref())
+        //         .await
+        //         .map_err(|e| JobError::ExecutionFailed(e.to_string()))?;
+        //
+        //         let deleted = result.rows_affected() as usize;
+        //         total_deleted += deleted;
+        //
+        //         if deleted < self.batch_size {
+        //             break;
+        //         }
+        //     }
+        //     return Ok(total_deleted);
+        // }
 
         // Simulate batch processing
         for batch in 1..=5 {
@@ -213,17 +258,6 @@ impl Job for CleanupOldDataJob {
                     self.batch_size
                 );
             } else {
-                // TODO: Implement actual deletion
-                // Example:
-                // let count = sqlx::query!(
-                //     "DELETE FROM events WHERE created_at < NOW() - INTERVAL $1 DAY LIMIT $2",
-                //     self.days_old,
-                //     self.batch_size
-                // )
-                // .execute(&db)
-                // .await?
-                // .rows_affected();
-
                 tracing::info!(
                     batch = batch,
                     deleted = self.batch_size,
@@ -293,7 +327,7 @@ pub struct ProcessImageJob {
 impl Job for ProcessImageJob {
     type Result = Vec<String>; // Returns paths to generated thumbnails
 
-    async fn execute(&self) -> JobResult<Self::Result> {
+    async fn execute(&self, _ctx: &JobContext) -> JobResult<Self::Result> {
         tracing::info!(
             image_id = self.image_id,
             file_path = %self.file_path,
@@ -304,16 +338,30 @@ impl Job for ProcessImageJob {
 
         let mut thumbnail_paths = Vec::new();
 
+        // TODO: Implement actual image processing with storage
+        // Example with JobContext:
+        // if let Some(file_storage) = ctx.file_storage() {
+        //     // Retrieve original image
+        //     let image_data = file_storage.retrieve(&self.file_path).await
+        //         .map_err(|e| JobError::ExecutionFailed(e.to_string()))?;
+        //
+        //     // Use ImageProcessor from storage module
+        //     let processor = ImageProcessor::new()?;
+        //
+        //     for size in &self.sizes {
+        //         let thumbnail = processor.resize(&image_data, *size, *size)?;
+        //         let thumb_id = format!("{}_{}x{}", self.image_id, size, size);
+        //         file_storage.store(thumbnail).await
+        //             .map_err(|e| JobError::ExecutionFailed(e.to_string()))?;
+        //         thumbnail_paths.push(thumb_id);
+        //     }
+        //
+        //     return Ok(thumbnail_paths);
+        // }
+
         // Generate thumbnails
         for size in &self.sizes {
             tracing::debug!(size = size, "Generating thumbnail");
-
-            // TODO: Implement actual image processing
-            // Example:
-            // let img = image::open(&self.file_path)?;
-            // let thumbnail = img.resize(*size, *size, FilterType::Lanczos3);
-            // let thumb_path = format!("{}_{}x{}.jpg", self.file_path, size, size);
-            // thumbnail.save(&thumb_path)?;
 
             // Simulate processing time
             tokio::time::sleep(Duration::from_millis(200)).await;
@@ -359,18 +407,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_welcome_email_job() {
+        let ctx = JobContext::new();
         let job = WelcomeEmailJob {
             user_id: 123,
             email: "test@example.com".to_string(),
             username: "testuser".to_string(),
         };
 
-        let result = job.execute().await;
+        let result = job.execute(&ctx).await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_generate_report_job() {
+        let ctx = JobContext::new();
         let job = GenerateReportJob {
             report_id: 456,
             user_id: 123,
@@ -379,26 +429,28 @@ mod tests {
             end_date: "2025-01-31".to_string(),
         };
 
-        let result = job.execute().await;
+        let result = job.execute(&ctx).await;
         assert!(result.is_ok());
         assert!(result.unwrap().contains("test_report"));
     }
 
     #[tokio::test]
     async fn test_cleanup_job_dry_run() {
+        let ctx = JobContext::new();
         let job = CleanupOldDataJob {
             days_old: 90,
             batch_size: 100,
             dry_run: true,
         };
 
-        let result = job.execute().await;
+        let result = job.execute(&ctx).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 500); // 5 batches * 100
     }
 
     #[tokio::test]
     async fn test_process_image_job() {
+        let ctx = JobContext::new();
         let job = ProcessImageJob {
             image_id: 789,
             file_path: "/tmp/test.jpg".to_string(),
@@ -406,7 +458,7 @@ mod tests {
             optimize: true,
         };
 
-        let result = job.execute().await;
+        let result = job.execute(&ctx).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap().len(), 2); // 2 thumbnail sizes
     }

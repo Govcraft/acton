@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use crate::email::Email;
-use crate::jobs::{Job, JobError, JobResult};
+use crate::jobs::{Job, JobContext, JobError, JobResult};
 
 /// Background job for sending emails
 ///
@@ -48,17 +48,21 @@ impl SendEmailJob {
 impl Job for SendEmailJob {
     type Result = ();
 
-    async fn execute(&self) -> JobResult<Self::Result> {
-        // In production, you would get the email sender from a global context or state
-        // For now, this is a placeholder that validates the email
+    async fn execute(&self, ctx: &JobContext) -> JobResult<Self::Result> {
+        // Validate email first
         self.email.validate()
             .map_err(|e| JobError::ExecutionFailed(format!("Email validation failed: {e}")))?;
 
-        // Note: Actual sending would require access to the EmailSender instance
-        // This would typically be stored in the JobContext or AppState
-        // For example:
-        // email_sender.send(self.email.clone()).await
-        //     .map_err(|e| JobError::ExecutionFailed(format!("Email send failed: {e}")))?;
+        // Get email sender from context
+        let Some(email_sender) = ctx.email_sender() else {
+            return Err(JobError::ExecutionFailed(
+                "Email sender not available in JobContext".to_string()
+            ));
+        };
+
+        // Send the email
+        email_sender.send(self.email.clone()).await
+            .map_err(|e| JobError::ExecutionFailed(format!("Email send failed: {e}")))?;
 
         Ok(())
     }
@@ -80,6 +84,8 @@ impl Job for SendEmailJob {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::email::sender::MockEmailSender;  // Use mockall-generated mock
+    use std::sync::Arc;
 
     #[test]
     fn test_send_email_job_creation() {
@@ -115,7 +121,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_send_email_job_execute() {
+    async fn test_send_email_job_execute_with_sender() {
+        let mut mock_sender = MockEmailSender::new();
+        mock_sender.expect_send().times(1).returning(|_| Ok(()));
+
+        let ctx = JobContext::new().with_email_sender(Arc::new(mock_sender));
+
         let email = Email::new()
             .to("user@example.com")
             .from("noreply@myapp.com")
@@ -124,12 +135,35 @@ mod tests {
 
         let job = SendEmailJob::new(email);
 
-        let result = job.execute().await;
+        let result = job.execute(&ctx).await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
+    async fn test_send_email_job_no_sender() {
+        let ctx = JobContext::new(); // No email sender
+
+        let email = Email::new()
+            .to("user@example.com")
+            .from("noreply@myapp.com")
+            .subject("Test")
+            .text("Hello");
+
+        let job = SendEmailJob::new(email);
+
+        let result = job.execute(&ctx).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not available"));
+    }
+
+    #[tokio::test]
     async fn test_send_email_job_invalid_email() {
+        let mut mock_sender = MockEmailSender::new();
+        // Should not be called because validation fails first
+        mock_sender.expect_send().times(0);
+
+        let ctx = JobContext::new().with_email_sender(Arc::new(mock_sender));
+
         // Create an invalid email (no recipients)
         let email = Email::new()
             .from("noreply@myapp.com")
@@ -138,7 +172,8 @@ mod tests {
 
         let job = SendEmailJob::new(email);
 
-        let result = job.execute().await;
+        let result = job.execute(&ctx).await;
         assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("validation failed"));
     }
 }

@@ -8,7 +8,7 @@ pub mod scheduled;
 pub use messages::{EnqueueJob, JobEnqueued, JobMetrics};
 pub use scheduled::{ScheduledJobAgent, ScheduledJobEntry, ScheduledJobMessage, ScheduledJobResponse, start_scheduler_loop};
 
-use super::{JobId, JobStatus};
+use super::{JobContext, JobId, JobStatus};
 use acton_reactive::prelude::*;
 use chrono::Utc;
 use parking_lot::RwLock;
@@ -30,7 +30,8 @@ type JobAgentBuilder = ManagedAgent<Idle, JobAgent>;
 /// - Automatic retry with exponential backoff
 /// - Dead letter queue for failed jobs
 /// - Graceful shutdown
-#[derive(Debug, Clone)]
+/// - Service access via [`JobContext`](crate::jobs::JobContext)
+#[derive(Clone)]
 #[allow(dead_code)] // Redis field will be used when handlers are enabled
 pub struct JobAgent {
     /// In-memory priority queue.
@@ -39,9 +40,29 @@ pub struct JobAgent {
     running: Arc<RwLock<HashMap<JobId, JobStatus>>>,
     /// Job metrics.
     metrics: Arc<RwLock<JobMetrics>>,
+    /// Job execution context with services.
+    ///
+    /// Provides jobs with access to email sender, database pool, file storage, etc.
+    context: Arc<JobContext>,
     /// Redis connection (optional, for persistence).
     #[cfg(feature = "redis")]
     redis: Option<Arc<RwLock<redis::aio::MultiplexedConnection>>>,
+}
+
+impl std::fmt::Debug for JobAgent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut debug_struct = f.debug_struct("JobAgent");
+        debug_struct
+            .field("queue", &"<JobQueue>")
+            .field("running", &self.running.read().len())
+            .field("metrics", &self.metrics.read())
+            .field("context", &self.context);
+
+        #[cfg(feature = "redis")]
+        debug_struct.field("redis", &self.redis.is_some());
+
+        debug_struct.finish()
+    }
 }
 
 impl Default for JobAgent {
@@ -51,13 +72,32 @@ impl Default for JobAgent {
 }
 
 impl JobAgent {
-    /// Create a new job agent without Redis.
+    /// Create a new job agent without Redis or services.
+    ///
+    /// Use [`with_context`](Self::with_context) to provide services.
     #[must_use]
     pub fn new() -> Self {
         Self {
             queue: Arc::new(RwLock::new(JobQueue::new(10_000))),
             running: Arc::new(RwLock::new(HashMap::new())),
             metrics: Arc::new(RwLock::new(JobMetrics::default())),
+            context: Arc::new(JobContext::new()),
+            #[cfg(feature = "redis")]
+            redis: None,
+        }
+    }
+
+    /// Create a new job agent with custom context.
+    ///
+    /// The context provides jobs with access to services like email sender,
+    /// database pool, and file storage.
+    #[must_use]
+    pub fn with_context(context: JobContext) -> Self {
+        Self {
+            queue: Arc::new(RwLock::new(JobQueue::new(10_000))),
+            running: Arc::new(RwLock::new(HashMap::new())),
+            metrics: Arc::new(RwLock::new(JobMetrics::default())),
+            context: Arc::new(context),
             #[cfg(feature = "redis")]
             redis: None,
         }
@@ -71,8 +111,17 @@ impl JobAgent {
             queue: Arc::new(RwLock::new(JobQueue::new(10_000))),
             running: Arc::new(RwLock::new(HashMap::new())),
             metrics: Arc::new(RwLock::new(JobMetrics::default())),
+            context: Arc::new(JobContext::new()),
             redis: Some(Arc::new(RwLock::new(redis))),
         }
+    }
+
+    /// Get the job context.
+    ///
+    /// This provides access to services configured for job execution.
+    #[must_use]
+    pub const fn context(&self) -> &Arc<JobContext> {
+        &self.context
     }
 
     /// Spawn job agent

@@ -203,7 +203,8 @@ struct TypedJobWrapper<J: Job> {
 impl<J: Job + Send + Sync> JobWrapper for TypedJobWrapper<J> {
     fn execute_boxed(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = JobResult<()>> + Send + '_>> {
         Box::pin(async move {
-            self.job.execute().await?;
+            let ctx = super::JobContext::new();
+            self.job.execute(&ctx).await?;
             Ok(())
         })
     }
@@ -275,7 +276,7 @@ impl TestJob {
 impl Job for TestJob {
     type Result = String;
 
-    async fn execute(&self) -> JobResult<Self::Result> {
+    async fn execute(&self, _ctx: &super::JobContext) -> JobResult<Self::Result> {
         if let Some(delay) = self.delay_ms {
             tokio::time::sleep(Duration::from_millis(delay)).await;
         }
@@ -324,7 +325,8 @@ pub async fn assert_job_succeeds<J: Job>(job: J)
 where
     J::Result: std::fmt::Debug,
 {
-    let result = job.execute().await;
+    let ctx = super::JobContext::new();
+    let result = job.execute(&ctx).await;
     assert!(
         result.is_ok(),
         "Job should succeed but failed with: {:?}",
@@ -350,7 +352,8 @@ where
 /// }
 /// ```
 pub async fn assert_job_fails<J: Job>(job: J) {
-    let result = job.execute().await;
+    let ctx = super::JobContext::new();
+    let result = job.execute(&ctx).await;
     assert!(result.is_err(), "Job should fail but succeeded");
 }
 
@@ -373,7 +376,8 @@ pub async fn assert_job_fails<J: Job>(job: J) {
 /// }
 /// ```
 pub async fn assert_job_completes_within<J: Job>(job: J, timeout: Duration) {
-    let result = tokio::time::timeout(timeout, job.execute()).await;
+    let ctx = super::JobContext::new();
+    let result = tokio::time::timeout(timeout, job.execute(&ctx)).await;
     assert!(
         result.is_ok(),
         "Job should complete within {timeout:?} but timed out"

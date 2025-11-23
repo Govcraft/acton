@@ -63,6 +63,7 @@
 //! ```
 
 mod cancellation;
+mod context;
 mod error;
 pub mod examples;
 mod job;
@@ -75,6 +76,7 @@ pub mod testing;
 pub use cancellation::{
     CancellationToken, JobCancellationManager, JobShutdownCoordinator, ShutdownResult,
 };
+pub use context::JobContext;
 pub use error::{JobError, JobResult};
 pub use job::{Job, JobId};
 pub use observability::{JobExecutionContext, JobPerformanceRecorder, JobQueueObserver};
