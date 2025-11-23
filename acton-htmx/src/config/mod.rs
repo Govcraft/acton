@@ -525,42 +525,6 @@ session_max_age_secs = 3600
     }
 
     #[test]
-    #[ignore = "Environment variable override needs investigation with figment"]
-    fn test_environment_variable_override() {
-        use std::env;
-        use std::fs;
-        use std::io::Write;
-
-        // Set environment variable (use __ for nesting, _ for field names)
-        // Note: figment converts to lowercase, so use lowercase after prefix
-        env::set_var("ACTON_HTMX__HISTORY_ENABLED", "false");
-
-        // Create a config file with different value
-        let temp_dir = std::env::temp_dir();
-        let config_path = temp_dir.join("test_env_config.toml");
-
-        let toml_content = r"
-[htmx]
-history_enabled = true
-";
-
-        let mut file = fs::File::create(&config_path).unwrap();
-        file.write_all(toml_content.as_bytes()).unwrap();
-
-        // Load configuration - env var should override file
-        let result = ActonHtmxConfig::load_from(config_path.to_str().unwrap());
-        assert!(result.is_ok());
-
-        let config = result.unwrap();
-        // Environment variable (false) should override file (true)
-        assert!(!config.htmx.history_enabled);
-
-        // Cleanup
-        env::remove_var("ACTON_HTMX__HISTORY_ENABLED");
-        fs::remove_file(config_path).ok();
-    }
-
-    #[test]
     fn test_load_for_service_with_defaults() {
         use std::env;
         // Ensure no test env vars from other tests

@@ -70,8 +70,6 @@ mod job;
 mod observability;
 mod schedule;
 mod status;
-#[cfg(test)]
-pub mod testing;
 
 pub use cancellation::{
     CancellationToken, JobCancellationManager, JobShutdownCoordinator, ShutdownResult,
@@ -88,3 +86,8 @@ pub use status::JobStatus;
 // Re-export agent components
 pub mod agent;
 pub use agent::JobAgent;
+
+// Test utilities are now in the testing module
+// Re-export for backward compatibility
+#[cfg(test)]
+pub use crate::testing::{assert_job_completes_within, assert_job_fails, assert_job_succeeds, TestJob, TestJobQueue};

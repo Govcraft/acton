@@ -86,6 +86,7 @@ pub mod agents;
 // Public middleware module (needed for session layer)
 pub mod middleware;
 
+// Testing utilities module (available in test builds)
 #[cfg(test)]
 pub mod testing;
 

@@ -203,7 +203,7 @@ struct TypedJobWrapper<J: Job> {
 impl<J: Job + Send + Sync> JobWrapper for TypedJobWrapper<J> {
     fn execute_boxed(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = JobResult<()>> + Send + '_>> {
         Box::pin(async move {
-            let ctx = super::JobContext::new();
+            let ctx = crate::jobs::JobContext::new();
             self.job.execute(&ctx).await?;
             Ok(())
         })
@@ -253,7 +253,7 @@ pub struct TestJob {
 impl TestJob {
     /// Create a new test job
     #[must_use]
-    pub fn new(id: String, should_succeed: bool) -> Self {
+    pub const fn new(id: String, should_succeed: bool) -> Self {
         Self {
             id,
             should_succeed,
@@ -263,7 +263,7 @@ impl TestJob {
 
     /// Create a test job with a delay
     #[must_use]
-    pub fn with_delay(id: String, should_succeed: bool, delay_ms: u64) -> Self {
+    pub const fn with_delay(id: String, should_succeed: bool, delay_ms: u64) -> Self {
         Self {
             id,
             should_succeed,
@@ -276,7 +276,7 @@ impl TestJob {
 impl Job for TestJob {
     type Result = String;
 
-    async fn execute(&self, _ctx: &super::JobContext) -> JobResult<Self::Result> {
+    async fn execute(&self, _ctx: &crate::jobs::JobContext) -> JobResult<Self::Result> {
         if let Some(delay) = self.delay_ms {
             tokio::time::sleep(Duration::from_millis(delay)).await;
         }
@@ -325,7 +325,7 @@ pub async fn assert_job_succeeds<J: Job>(job: J)
 where
     J::Result: std::fmt::Debug,
 {
-    let ctx = super::JobContext::new();
+    let ctx = crate::jobs::JobContext::new();
     let result = job.execute(&ctx).await;
     assert!(
         result.is_ok(),
@@ -352,7 +352,7 @@ where
 /// }
 /// ```
 pub async fn assert_job_fails<J: Job>(job: J) {
-    let ctx = super::JobContext::new();
+    let ctx = crate::jobs::JobContext::new();
     let result = job.execute(&ctx).await;
     assert!(result.is_err(), "Job should fail but succeeded");
 }
@@ -376,7 +376,7 @@ pub async fn assert_job_fails<J: Job>(job: J) {
 /// }
 /// ```
 pub async fn assert_job_completes_within<J: Job>(job: J, timeout: Duration) {
-    let ctx = super::JobContext::new();
+    let ctx = crate::jobs::JobContext::new();
     let result = tokio::time::timeout(timeout, job.execute(&ctx)).await;
     assert!(
         result.is_ok(),

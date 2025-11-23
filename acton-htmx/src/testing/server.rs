@@ -67,7 +67,7 @@ impl TestServer {
 
     /// Get the inner `axum_test::TestServer` for advanced usage
     #[must_use]
-    pub fn inner(&self) -> &axum_test::TestServer {
+    pub const fn inner(&self) -> &axum_test::TestServer {
         &self.inner
     }
 }

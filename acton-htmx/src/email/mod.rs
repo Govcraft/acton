@@ -63,9 +63,6 @@ mod job;
 mod sender;
 mod template;
 
-#[cfg(test)]
-mod testing;
-
 pub use backend::{
     aws_ses::AwsSesBackend,
     console::ConsoleBackend,
@@ -77,5 +74,7 @@ pub use job::SendEmailJob;
 pub use sender::EmailSender;
 pub use template::{EmailTemplate, SimpleEmailTemplate};
 
+// Test utilities are now in the testing module
+// Re-export for backward compatibility
 #[cfg(test)]
-pub use testing::MockEmailSender;
+pub use crate::testing::MockEmailSender;

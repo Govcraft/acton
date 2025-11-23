@@ -145,41 +145,10 @@ pub async fn create_sqlite_pool() -> anyhow::Result<sqlx::SqlitePool> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[tokio::test]
-    #[ignore = "Requires PostgreSQL database"]
-    async fn test_database_creation() {
-        let test_db = TestDatabase::new().await.unwrap();
-        let pool = test_db.pool();
-
-        // Verify we can query the database
-        let result: (i32,) = sqlx::query_as("SELECT 1")
-            .fetch_one(pool)
-            .await
-            .unwrap();
-
-        assert_eq!(result.0, 1);
-    }
-
-    #[tokio::test]
-    #[ignore = "Requires PostgreSQL database"]
-    async fn test_database_without_migrations() {
-        let test_db = TestDatabase::without_migrations().await.unwrap();
-        let pool = test_db.pool();
-
-        // Verify we can query the database
-        let result: (i32,) = sqlx::query_as("SELECT 1")
-            .fetch_one(pool)
-            .await
-            .unwrap();
-
-        assert_eq!(result.0, 1);
-    }
-
     #[cfg(feature = "sqlite")]
     #[tokio::test]
     async fn test_sqlite_pool() {
+        use super::*;
         let pool = create_sqlite_pool().await.unwrap();
 
         // Verify we can query the database

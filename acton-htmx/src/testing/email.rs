@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 
-use super::{Email, EmailError, EmailSender};
+use crate::email::{Email, EmailError, EmailSender};
 
 /// Mock email sender for testing
 ///
