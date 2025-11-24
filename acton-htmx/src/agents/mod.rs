@@ -15,9 +15,10 @@ pub use csrf_manager::{
     CleanupExpired as CsrfCleanupExpired, DeleteToken, GetOrCreateToken, TokenResponse,
     ValidateToken, ValidationResponse,
 };
+pub use request_reply::{create_request_reply, send_response, ResponseChannel};
 pub use session_manager::{
     // Web handler messages (oneshot responses)
-    LoadSessionRequest, ResponseChannel, SaveSessionRequest, TakeFlashesRequest,
+    LoadSessionRequest, SaveSessionRequest, TakeFlashesRequest,
     // Agent-to-agent messages
     AddFlash, CleanupExpired, DeleteSession, FlashMessages, GetFlashes, LoadSession, SaveSession,
     SessionLoaded, SessionManagerAgent, SessionNotFound,

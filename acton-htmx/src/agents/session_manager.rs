@@ -10,13 +10,13 @@
 //! The web handler style (`LoadSessionRequest`, `SaveSessionRequest`) includes
 //! oneshot channels wrapped in `Arc<Mutex<Option<...>>>` to satisfy Clone requirements.
 
+use crate::agents::request_reply::{create_request_reply, send_response, ResponseChannel};
 use crate::auth::session::{FlashMessage, SessionData, SessionId};
 use acton_reactive::prelude::*;
 use chrono::{DateTime, Duration, Utc};
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap};
-use std::sync::Arc;
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::oneshot;
 
 // Type alias for the ManagedAgent builder type
 type SessionAgentBuilder = ManagedAgent<Idle, SessionManagerAgent>;
@@ -40,9 +40,6 @@ pub struct SessionManagerAgent {
 // Web Handler Messages (with oneshot response channels)
 // ============================================================================
 
-/// Wrapper for oneshot sender that satisfies Clone + Debug
-pub type ResponseChannel<T> = Arc<Mutex<Option<oneshot::Sender<T>>>>;
-
 /// Request to load a session from web handlers
 ///
 /// Uses a oneshot channel for synchronous response needed by Axum extractors.
@@ -58,10 +55,10 @@ impl LoadSessionRequest {
     /// Create a new load session request with response channel
     #[must_use]
     pub fn new(session_id: SessionId) -> (Self, oneshot::Receiver<Option<SessionData>>) {
-        let (tx, rx) = oneshot::channel();
+        let (response_tx, rx) = create_request_reply();
         let request = Self {
             session_id,
-            response_tx: Arc::new(Mutex::new(Some(tx))),
+            response_tx,
         };
         (request, rx)
     }
@@ -95,11 +92,11 @@ impl SaveSessionRequest {
         session_id: SessionId,
         data: SessionData,
     ) -> (Self, oneshot::Receiver<bool>) {
-        let (tx, rx) = oneshot::channel();
+        let (response_tx, rx) = create_request_reply();
         let request = Self {
             session_id,
             data,
-            response_tx: Some(Arc::new(Mutex::new(Some(tx)))),
+            response_tx: Some(response_tx),
         };
         (request, rx)
     }
@@ -118,10 +115,10 @@ impl TakeFlashesRequest {
     /// Create a new take flashes request with response channel
     #[must_use]
     pub fn new(session_id: SessionId) -> (Self, oneshot::Receiver<Vec<FlashMessage>>) {
-        let (tx, rx) = oneshot::channel();
+        let (response_tx, rx) = create_request_reply();
         let request = Self {
             session_id,
-            response_tx: Arc::new(Mutex::new(Some(tx))),
+            response_tx,
         };
         (request, rx)
     }
@@ -246,10 +243,7 @@ impl SessionManagerAgent {
                         }
                     });
 
-                    let tx = response_tx.lock().await.take();
-                    if let Some(tx) = tx {
-                        let _ = tx.send(result);
-                    }
+                    let _ = send_response(response_tx, result).await;
                 })
             })
             .mutate_on::<SaveSessionRequest>(|agent, envelope| {
@@ -269,10 +263,7 @@ impl SessionManagerAgent {
                 // Always use async to maintain consistent return type
                 AgentReply::from_async(async move {
                     if let Some(tx) = response_tx {
-                        let sender = tx.lock().await.take();
-                        if let Some(sender) = sender {
-                            let _ = sender.send(true);
-                        }
+                        let _ = send_response(tx, true).await;
                     }
                 })
             })
@@ -289,10 +280,7 @@ impl SessionManagerAgent {
                     .unwrap_or_default();
 
                 AgentReply::from_async(async move {
-                    let tx = response_tx.lock().await.take();
-                    if let Some(tx) = tx {
-                        let _ = tx.send(messages);
-                    }
+                    let _ = send_response(response_tx, messages).await;
                 })
             })
             // ================================================================

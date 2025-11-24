@@ -13,14 +13,14 @@
 //! - Automatically rotated on successful validation
 //! - Validated against POST/PUT/DELETE/PATCH requests
 
+use crate::agents::request_reply::{create_request_reply, send_response, ResponseChannel};
 use crate::auth::session::SessionId;
 use acton_reactive::prelude::*;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use chrono::{DateTime, Duration, Utc};
 use rand::Rng;
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::oneshot;
 
 // Type alias for the ManagedAgent builder type
 type CsrfAgentBuilder = ManagedAgent<Idle, CsrfManagerAgent>;
@@ -93,9 +93,6 @@ pub struct CsrfManagerAgent {
 // Web Handler Messages (with oneshot response channels)
 // ============================================================================
 
-/// Wrapper for oneshot sender that satisfies Clone + Debug
-pub type ResponseChannel<T> = Arc<Mutex<Option<oneshot::Sender<T>>>>;
-
 /// Request to get or create a CSRF token for a session
 #[derive(Clone, Debug)]
 pub struct GetOrCreateTokenRequest {
@@ -109,10 +106,10 @@ impl GetOrCreateTokenRequest {
     /// Create a new get-or-create token request with response channel
     #[must_use]
     pub fn new(session_id: SessionId) -> (Self, oneshot::Receiver<CsrfToken>) {
-        let (tx, rx) = oneshot::channel();
+        let (response_tx, rx) = create_request_reply();
         let request = Self {
             session_id,
-            response_tx: Arc::new(Mutex::new(Some(tx))),
+            response_tx,
         };
         (request, rx)
     }
@@ -133,11 +130,11 @@ impl ValidateTokenRequest {
     /// Create a new validate token request with response channel
     #[must_use]
     pub fn new(session_id: SessionId, token: CsrfToken) -> (Self, oneshot::Receiver<bool>) {
-        let (tx, rx) = oneshot::channel();
+        let (response_tx, rx) = create_request_reply();
         let request = Self {
             session_id,
             token,
-            response_tx: Arc::new(Mutex::new(Some(tx))),
+            response_tx,
         };
         (request, rx)
     }
@@ -234,7 +231,7 @@ impl CsrfManagerAgent {
                 let token = Self::get_or_create_token_internal(&mut agent.model, &session_id);
 
                 AgentReply::from_async(async move {
-                    Self::send_token_response(response_tx, token).await;
+                    let _ = send_response(response_tx, token).await;
                 })
             })
             .mutate_on::<ValidateTokenRequest>(|agent, envelope| {
@@ -245,7 +242,7 @@ impl CsrfManagerAgent {
                 let valid = Self::validate_and_rotate_token(&mut agent.model, &session_id, &token);
 
                 AgentReply::from_async(async move {
-                    Self::send_validation_response(response_tx, valid).await;
+                    let _ = send_response(response_tx, valid).await;
                 })
             })
             .mutate_on::<DeleteTokenRequest>(|agent, envelope| {
@@ -334,22 +331,6 @@ impl CsrfManagerAgent {
         }
 
         valid
-    }
-
-    /// Send token response via oneshot channel
-    async fn send_token_response(response_tx: ResponseChannel<CsrfToken>, token: CsrfToken) {
-        let mut guard = response_tx.lock().await;
-        if let Some(tx) = guard.take() {
-            let _ = tx.send(token);
-        }
-    }
-
-    /// Send validation response via oneshot channel
-    async fn send_validation_response(response_tx: ResponseChannel<bool>, valid: bool) {
-        let mut guard = response_tx.lock().await;
-        if let Some(tx) = guard.take() {
-            let _ = tx.send(valid);
-        }
     }
 }
 
