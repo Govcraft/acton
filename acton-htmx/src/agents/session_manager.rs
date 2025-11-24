@@ -400,16 +400,18 @@ mod tests {
         let mut runtime = ActonApp::launch();
         let result = SessionManagerAgent::spawn(&mut runtime).await;
         assert!(result.is_ok());
+        runtime.shutdown_all().await.expect("Failed to shutdown");
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn test_session_save_and_load() {
+    async fn test_session_save_and_load_with_verification() {
         let mut runtime = ActonApp::launch();
         let session_manager = SessionManagerAgent::spawn(&mut runtime).await.unwrap();
 
         let session_id = SessionId::generate();
         let mut data = SessionData::new();
-        data.set("test_key".to_string(), "test_value").unwrap();
+        data.set("test_key".to_string(), "test_value".to_string())
+            .unwrap();
 
         // Save session
         session_manager
@@ -419,25 +421,58 @@ mod tests {
             })
             .await;
 
-        // Load session
-        session_manager
-            .send(LoadSession {
-                session_id: session_id.clone(),
-            })
-            .await;
+        // Allow message processing
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
-        // TODO: Add response verification once we have proper message handling
+        // Load session using web handler style (with oneshot channel for verification)
+        let (request, rx) = LoadSessionRequest::new(session_id.clone());
+        session_manager.send(request).await;
+
+        // Verify response
+        let loaded_data = tokio::time::timeout(tokio::time::Duration::from_secs(1), rx)
+            .await
+            .expect("Timeout waiting for response")
+            .expect("Channel closed");
+
+        assert!(loaded_data.is_some(), "Session should exist");
+        let loaded = loaded_data.unwrap();
+        let loaded_value: Option<String> = loaded.get("test_key").unwrap();
+        assert_eq!(loaded_value, Some("test_value".to_string()));
+
+        runtime.shutdown_all().await.expect("Failed to shutdown");
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn test_session_delete() {
+    async fn test_session_not_found() {
+        let mut runtime = ActonApp::launch();
+        let session_manager = SessionManagerAgent::spawn(&mut runtime).await.unwrap();
+
+        let session_id = SessionId::generate();
+
+        // Try to load non-existent session
+        let (request, rx) = LoadSessionRequest::new(session_id);
+        session_manager.send(request).await;
+
+        // Verify response
+        let result = tokio::time::timeout(tokio::time::Duration::from_secs(1), rx)
+            .await
+            .expect("Timeout waiting for response")
+            .expect("Channel closed");
+
+        assert!(result.is_none(), "Session should not exist");
+
+        runtime.shutdown_all().await.expect("Failed to shutdown");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_session_delete_with_verification() {
         let mut runtime = ActonApp::launch();
         let session_manager = SessionManagerAgent::spawn(&mut runtime).await.unwrap();
 
         let session_id = SessionId::generate();
         let data = SessionData::new();
 
-        // Save then delete
+        // Save session
         session_manager
             .send(SaveSession {
                 session_id: session_id.clone(),
@@ -445,18 +480,42 @@ mod tests {
             })
             .await;
 
+        // Allow message processing
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+        // Verify session exists
+        let (request, rx) = LoadSessionRequest::new(session_id.clone());
+        session_manager.send(request).await;
+        let result = tokio::time::timeout(tokio::time::Duration::from_secs(1), rx)
+            .await
+            .expect("Timeout")
+            .expect("Channel closed");
+        assert!(result.is_some(), "Session should exist before deletion");
+
+        // Delete session
         session_manager
             .send(DeleteSession {
                 session_id: session_id.clone(),
             })
             .await;
 
-        // Load should return NotFound
-        session_manager.send(LoadSession { session_id }).await;
+        // Allow message processing
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+        // Verify session is deleted
+        let (request, rx) = LoadSessionRequest::new(session_id);
+        session_manager.send(request).await;
+        let result = tokio::time::timeout(tokio::time::Duration::from_secs(1), rx)
+            .await
+            .expect("Timeout")
+            .expect("Channel closed");
+        assert!(result.is_none(), "Session should not exist after deletion");
+
+        runtime.shutdown_all().await.expect("Failed to shutdown");
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn test_flash_messages() {
+    async fn test_flash_messages_with_verification() {
         let mut runtime = ActonApp::launch();
         let session_manager = SessionManagerAgent::spawn(&mut runtime).await.unwrap();
 
@@ -471,17 +530,215 @@ mod tests {
             })
             .await;
 
-        // Add flash message
+        // Allow message processing
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+        // Add flash messages
         session_manager
             .send(AddFlash {
                 session_id: session_id.clone(),
-                message: FlashMessage::success("Test message"),
+                message: FlashMessage::success("Success message"),
             })
             .await;
 
-        // Get flashes
-        session_manager.send(GetFlashes {
-            session_id,
-        }).await;
+        session_manager
+            .send(AddFlash {
+                session_id: session_id.clone(),
+                message: FlashMessage::error("Error message"),
+            })
+            .await;
+
+        // Allow message processing
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+        // Get and verify flashes (using TakeFlashesRequest which clears them)
+        let (request, rx) = TakeFlashesRequest::new(session_id.clone());
+        session_manager.send(request).await;
+
+        let flashes = tokio::time::timeout(tokio::time::Duration::from_secs(1), rx)
+            .await
+            .expect("Timeout waiting for response")
+            .expect("Channel closed");
+
+        assert_eq!(flashes.len(), 2, "Should have 2 flash messages");
+        assert_eq!(flashes[0].message, "Success message");
+        assert_eq!(flashes[1].message, "Error message");
+
+        // Verify flashes are cleared after taking
+        let (request, rx) = TakeFlashesRequest::new(session_id);
+        session_manager.send(request).await;
+
+        let flashes = tokio::time::timeout(tokio::time::Duration::from_secs(1), rx)
+            .await
+            .expect("Timeout")
+            .expect("Channel closed");
+
+        assert_eq!(flashes.len(), 0, "Flashes should be cleared after taking");
+
+        runtime.shutdown_all().await.expect("Failed to shutdown");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_session_expiry_cleanup() {
+        let mut runtime = ActonApp::launch();
+        let session_manager = SessionManagerAgent::spawn(&mut runtime).await.unwrap();
+
+        let session_id = SessionId::generate();
+        let mut data = SessionData::new();
+        // Set expiry to the past
+        data.expires_at = Utc::now() - Duration::hours(1);
+
+        // Save expired session
+        session_manager
+            .send(SaveSession {
+                session_id: session_id.clone(),
+                data,
+            })
+            .await;
+
+        // Allow message processing
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+        // Trigger cleanup
+        session_manager.send(CleanupExpired).await;
+
+        // Allow message processing
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+        // Verify expired session is not returned
+        let (request, rx) = LoadSessionRequest::new(session_id);
+        session_manager.send(request).await;
+
+        let result = tokio::time::timeout(tokio::time::Duration::from_secs(1), rx)
+            .await
+            .expect("Timeout")
+            .expect("Channel closed");
+
+        assert!(result.is_none(), "Expired session should not be returned");
+
+        runtime.shutdown_all().await.expect("Failed to shutdown");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_session_touch_extends_expiry() {
+        let mut runtime = ActonApp::launch();
+        let session_manager = SessionManagerAgent::spawn(&mut runtime).await.unwrap();
+
+        let session_id = SessionId::generate();
+        let mut data = SessionData::new();
+        let original_expiry = Utc::now() + Duration::hours(1);
+        data.expires_at = original_expiry;
+
+        // Save session
+        session_manager
+            .send(SaveSession {
+                session_id: session_id.clone(),
+                data,
+            })
+            .await;
+
+        // Allow message processing
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+        // Load session (which should touch and extend expiry)
+        let (request, rx) = LoadSessionRequest::new(session_id);
+        session_manager.send(request).await;
+
+        let loaded = tokio::time::timeout(tokio::time::Duration::from_secs(1), rx)
+            .await
+            .expect("Timeout")
+            .expect("Channel closed");
+
+        assert!(loaded.is_some(), "Session should exist");
+        let loaded_data = loaded.unwrap();
+        assert!(
+            loaded_data.expires_at > original_expiry,
+            "Expiry should be extended after touch"
+        );
+
+        runtime.shutdown_all().await.expect("Failed to shutdown");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_save_with_confirmation() {
+        let mut runtime = ActonApp::launch();
+        let session_manager = SessionManagerAgent::spawn(&mut runtime).await.unwrap();
+
+        let session_id = SessionId::generate();
+        let data = SessionData::new();
+
+        // Save with confirmation
+        let (request, rx) = SaveSessionRequest::with_confirmation(session_id, data);
+        session_manager.send(request).await;
+
+        // Verify confirmation
+        let confirmed = tokio::time::timeout(tokio::time::Duration::from_secs(1), rx)
+            .await
+            .expect("Timeout waiting for confirmation")
+            .expect("Channel closed");
+
+        assert!(confirmed, "Save should be confirmed");
+
+        runtime.shutdown_all().await.expect("Failed to shutdown");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_concurrent_flash_messages() {
+        let mut runtime = ActonApp::launch();
+        let session_manager = SessionManagerAgent::spawn(&mut runtime).await.unwrap();
+
+        let session_id = SessionId::generate();
+        let data = SessionData::new();
+
+        // Save session
+        session_manager
+            .send(SaveSession {
+                session_id: session_id.clone(),
+                data,
+            })
+            .await;
+
+        // Allow message processing
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+        // Add multiple flash messages concurrently
+        let handles: Vec<_> = (0..10)
+            .map(|i| {
+                let sm = session_manager.clone();
+                let sid = session_id.clone();
+                tokio::spawn(async move {
+                    sm.send(AddFlash {
+                        session_id: sid,
+                        message: FlashMessage::info(format!("Message {i}")),
+                    })
+                    .await;
+                })
+            })
+            .collect();
+
+        // Wait for all sends to complete
+        for handle in handles {
+            handle.await.unwrap();
+        }
+
+        // Allow message processing
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+        // Retrieve flashes
+        let (request, rx) = TakeFlashesRequest::new(session_id);
+        session_manager.send(request).await;
+
+        let flashes = tokio::time::timeout(tokio::time::Duration::from_secs(1), rx)
+            .await
+            .expect("Timeout")
+            .expect("Channel closed");
+
+        assert_eq!(
+            flashes.len(),
+            10,
+            "Should have all 10 flash messages despite concurrent adds"
+        );
+
+        runtime.shutdown_all().await.expect("Failed to shutdown");
     }
 }
