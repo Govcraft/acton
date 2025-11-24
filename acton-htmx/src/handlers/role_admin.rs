@@ -52,6 +52,11 @@ pub struct RoleResponse {
 /// Returns the current roles assigned to a user.
 /// Requires admin role.
 ///
+/// # Errors
+///
+/// Returns [`StatusCode::FORBIDDEN`] if the authenticated user does not have the "admin" role.
+/// Returns [`StatusCode::NOT_FOUND`] if the user with the specified ID cannot be found.
+///
 /// # Example
 ///
 /// ```bash
@@ -103,6 +108,13 @@ pub async fn get_user_roles(
 ///
 /// Adds a role to the user's roles list if not already present.
 /// Requires admin role.
+///
+/// # Errors
+///
+/// Returns [`StatusCode::FORBIDDEN`] if the authenticated user does not have the "admin" role.
+/// Returns [`StatusCode::BAD_REQUEST`] if the role name is invalid (not one of: user, moderator, admin).
+/// Returns [`StatusCode::NOT_FOUND`] if the user with the specified ID cannot be found.
+/// Returns [`StatusCode::INTERNAL_SERVER_ERROR`] if the database update operation fails.
 ///
 /// # Example
 ///
@@ -198,6 +210,13 @@ pub async fn assign_role(
 ///
 /// Removes a role from the user's roles list.
 /// Requires admin role.
+///
+/// # Errors
+///
+/// Returns [`StatusCode::FORBIDDEN`] if the authenticated user does not have the "admin" role.
+/// Returns [`StatusCode::NOT_FOUND`] if the user with the specified ID cannot be found.
+/// Returns [`StatusCode::BAD_REQUEST`] if attempting to remove the required "user" role.
+/// Returns [`StatusCode::INTERNAL_SERVER_ERROR`] if the database update operation fails.
 ///
 /// # Example
 ///

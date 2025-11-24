@@ -139,6 +139,11 @@ impl RateLimit {
     /// 2. Checks if request path matches strict route patterns
     /// 3. Applies appropriate rate limit (per-user, per-IP, or per-route)
     /// 4. Returns 429 Too Many Requests if limit exceeded
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RateLimitError::TooManyRequests`] if the rate limit is exceeded.
+    /// Returns [`RateLimitError::Redis`] if Redis operations fail (when using Redis feature).
     pub async fn middleware(
         State(rate_limit): State<Self>,
         request: Request,

@@ -14,6 +14,12 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilte
 /// - Environment-based log level filtering
 /// - Request ID correlation
 ///
+/// # Errors
+///
+/// Returns an error if:
+/// - The tracing subscriber global default cannot be set (already initialized)
+/// - Environment filter parsing fails for invalid `RUST_LOG` values
+///
 /// # Example
 ///
 /// ```rust,no_run

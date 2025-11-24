@@ -186,6 +186,13 @@ pub trait HxTemplate: Template {
     /// Returns the OOB HTML as a String instead of a Response, allowing
     /// multiple OOB swaps to be combined in a single response.
     ///
+    /// # Errors
+    ///
+    /// Returns [`askama::Error`] if template rendering fails due to:
+    /// - Invalid template syntax
+    /// - Missing variables or fields
+    /// - Template execution errors
+    ///
     /// # Examples
     ///
     /// ```rust

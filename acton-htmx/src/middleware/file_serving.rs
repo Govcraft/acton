@@ -133,6 +133,14 @@ impl<S: FileStorage> FileServingMiddleware<S> {
 ///
 /// This should be used as an Axum route handler for file serving endpoints.
 ///
+/// # Errors
+///
+/// Returns [`FileServingError`] if:
+/// - File metadata cannot be retrieved (file not found, storage error)
+/// - File data cannot be retrieved from storage
+/// - Range request parsing fails (invalid Range header)
+/// - Content type detection fails
+///
 /// # Examples
 ///
 /// ```rust,no_run

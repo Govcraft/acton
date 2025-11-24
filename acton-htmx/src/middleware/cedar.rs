@@ -288,6 +288,14 @@ impl CedarAuthzBuilder {
     /// Build the CedarAuthz instance (async)
     ///
     /// This loads the Cedar policies from the configured file path.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CedarError`] if:
+    /// - Policy file cannot be read (file not found, permission denied)
+    /// - Policy file contains invalid Cedar syntax
+    /// - Policy parsing fails
+    /// - Async file I/O task panics or is cancelled
     pub async fn build(self) -> Result<CedarAuthz, CedarError> {
         // Load policies from file (using spawn_blocking for file I/O)
         let path = self.config.policy_path.clone();
@@ -347,6 +355,11 @@ impl CedarAuthz {
     ///
     /// This is a shortcut for `CedarAuthz::builder(config).build().await`.
     ///
+    /// # Errors
+    ///
+    /// Returns [`CedarError`] if policy loading or parsing fails.
+    /// See [`CedarAuthzBuilder::build`] for detailed error conditions.
+    ///
     /// # Example
     ///
     /// ```rust,ignore
@@ -365,6 +378,14 @@ impl CedarAuthz {
     /// 4. Builds Cedar principal, action, context
     /// 5. Evaluates policies
     /// 6. Returns 403 if denied, continues if allowed
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CedarError`] if:
+    /// - User session is missing (session middleware must run first)
+    /// - Policy evaluation fails
+    /// - Authorization is denied by Cedar policies
+    /// - Entity or context building fails
     #[allow(clippy::cognitive_complexity)] // Middleware with multiple validation steps
     pub async fn middleware(
         State(authz): State<Self>,
@@ -473,6 +494,14 @@ impl CedarAuthz {
     }
 
     /// Reload policies from file (for hot-reload support)
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CedarError`] if:
+    /// - Policy file cannot be read
+    /// - Policy file contains invalid Cedar syntax
+    /// - Policy parsing fails
+    /// - Async file I/O task panics or is cancelled
     pub async fn reload_policies(&self) -> Result<(), CedarError> {
         let path = self.config.policy_path.clone();
         let policies = tokio::task::spawn_blocking(move || std::fs::read_to_string(&path)).await??;

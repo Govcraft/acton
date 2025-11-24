@@ -75,6 +75,11 @@ pub struct PolicyStatusResponse {
 /// - User must be authenticated
 /// - User must have "admin" role
 ///
+/// # Errors
+///
+/// Returns [`StatusCode::FORBIDDEN`] if the authenticated user does not have the "admin" role.
+/// Returns [`StatusCode::INTERNAL_SERVER_ERROR`] if policy reload fails.
+///
 /// # Example
 ///
 /// ```bash
@@ -143,6 +148,10 @@ pub async fn reload_policies(
 ///
 /// Returns information about the current Cedar configuration.
 /// This endpoint should be protected with admin-only authorization.
+///
+/// # Errors
+///
+/// Returns [`StatusCode::FORBIDDEN`] if the authenticated user does not have the "admin" role.
 ///
 /// # Example
 ///

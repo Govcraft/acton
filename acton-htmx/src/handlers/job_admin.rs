@@ -94,6 +94,10 @@ pub struct JobStatsResponse {
 /// Returns a list of jobs from the queue and their current status.
 /// Requires admin role.
 ///
+/// # Errors
+///
+/// Returns [`StatusCode::FORBIDDEN`] if the authenticated user does not have the "admin" role.
+///
 /// # Example
 ///
 /// ```bash

@@ -76,6 +76,15 @@ impl AuthMiddleware {
     /// Middleware handler that checks for authentication
     ///
     /// This is the actual middleware function that gets invoked for each request.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AuthMiddlewareError::Unauthenticated`] if:
+    /// - No valid session exists in request extensions
+    /// - Session exists but does not contain a user_id
+    ///
+    /// For HTMX requests, returns 401 with HX-Redirect header to login page.
+    /// For standard browser requests, redirects to login page.
     pub async fn handle(
         request: Request,
         next: Next,

@@ -397,6 +397,14 @@ impl ActonHtmxConfig {
     /// 4. `/etc/acton-htmx/{service_name}/config.toml`
     /// 5. Defaults
     ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Default configuration cannot be serialized to TOML
+    /// - Configuration file cannot be read or parsed
+    /// - Configuration values fail validation or type conversion
+    /// - Required fields are missing from merged configuration
+    ///
     /// # Example
     ///
     /// ```rust,no_run
@@ -440,6 +448,15 @@ impl ActonHtmxConfig {
     }
 
     /// Load configuration from a specific file
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Default configuration cannot be serialized to TOML
+    /// - Configuration file at `path` cannot be read or does not exist
+    /// - Configuration file contains invalid TOML syntax
+    /// - Configuration values fail validation or type conversion
+    /// - Required fields are missing
     ///
     /// # Example
     ///
@@ -488,6 +505,13 @@ impl ActonHtmxConfig {
     }
 
     /// Create config directory for a service
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Directory creation fails due to insufficient permissions
+    /// - Parent directory path is invalid or inaccessible
+    /// - Filesystem I/O error occurs
     ///
     /// # Example
     ///

@@ -60,8 +60,6 @@
 //! See the [architecture overview](../../../.claude/architecture-overview.md) for details.
 
 // Lint configuration is handled at the workspace level in Cargo.toml
-// Additional crate-specific allows:
-#![allow(clippy::missing_errors_doc)] // TODO: Add comprehensive error docs before 1.0
 
 // Public modules (exported in public API)
 pub mod auth;

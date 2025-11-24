@@ -101,6 +101,14 @@ pub async fn login_form(
 
 /// POST /login - Process login
 ///
+/// # Errors
+///
+/// Returns [`AuthHandlerError`] if:
+/// - Form validation fails (invalid email format, missing fields)
+/// - Email address cannot be parsed
+/// - User authentication fails (invalid credentials, user not found)
+/// - Database query fails
+///
 /// # Example
 ///
 /// ```rust,ignore
@@ -183,6 +191,15 @@ pub async fn register_form(
 }
 
 /// POST /register - Process registration
+///
+/// # Errors
+///
+/// Returns [`AuthHandlerError`] if:
+/// - Form validation fails (invalid email, weak password, missing fields)
+/// - Email address cannot be parsed
+/// - Password and confirmation password do not match
+/// - Email address is already registered
+/// - Database query or user creation fails
 ///
 /// # Example
 ///
