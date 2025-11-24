@@ -365,16 +365,21 @@ pub const HANDLERS_AUTH: &str = r#"//! Authentication handlers
 
 use acton_htmx::{
     prelude::*,
+    state::AppState,
     extractors::{Session, ValidatedForm},
+    auth::{
+        User, EmailAddress, CreateUser, FlashMessage, FlashLevel,
+        UserError,
+    },
 };
 use askama::Template;
 use axum::{
+    extract::State,
     response::{Html, IntoResponse, Redirect},
+    http::StatusCode,
 };
 use serde::Deserialize;
 use validator::Validate;
-
-use crate::models::User;
 
 #[derive(Template)]
 #[template(path = "auth/login.html")]
@@ -414,14 +419,49 @@ pub async fn login_form() -> Html<String> {
 
 /// Process login
 pub async fn login(
+    State(state): State<AppState>,
     mut session: Session,
     ValidatedForm(form): ValidatedForm<LoginForm>,
 ) -> impl IntoResponse {
-    // TODO: Implement actual authentication
-    // For now, just set user_id in session
-    session.set("user_id", "1").await.unwrap();
+    // Parse and validate email address
+    let email = match EmailAddress::parse(&form.email) {
+        Ok(email) => email,
+        Err(_) => {
+            let template = LoginTemplate {
+                error: Some("Invalid email address format".to_string()),
+            };
+            return (StatusCode::BAD_REQUEST, Html(template.render().unwrap())).into_response();
+        }
+    };
 
-    Redirect::to("/")
+    // Authenticate user against database
+    let user = match User::authenticate(&email, &form.password, state.database_pool()).await {
+        Ok(user) => user,
+        Err(UserError::InvalidCredentials) => {
+            let template = LoginTemplate {
+                error: Some("Invalid email or password".to_string()),
+            };
+            return (StatusCode::UNAUTHORIZED, Html(template.render().unwrap())).into_response();
+        }
+        Err(e) => {
+            tracing::error!("Authentication error: {}", e);
+            let template = LoginTemplate {
+                error: Some("An error occurred during login. Please try again.".to_string()),
+            };
+            return (StatusCode::INTERNAL_SERVER_ERROR, Html(template.render().unwrap())).into_response();
+        }
+    };
+
+    // Set user ID in session
+    session.set_user_id(Some(user.id));
+
+    // Add success flash message
+    session.add_flash(FlashMessage {
+        level: FlashLevel::Success,
+        message: "Successfully logged in!".to_string(),
+    });
+
+    Redirect::to("/").into_response()
 }
 
 /// Show registration form
@@ -432,52 +472,147 @@ pub async fn register_form() -> Html<String> {
 
 /// Process registration
 pub async fn register(
+    State(state): State<AppState>,
     mut session: Session,
     ValidatedForm(form): ValidatedForm<RegisterForm>,
 ) -> impl IntoResponse {
-    // TODO: Implement actual registration
-    // For now, just redirect to login
-    Redirect::to("/login")
+    // Parse and validate email address
+    let email = match EmailAddress::parse(&form.email) {
+        Ok(email) => email,
+        Err(e) => {
+            let template = RegisterTemplate {
+                error: Some(format!("Invalid email address: {e}")),
+            };
+            return (StatusCode::BAD_REQUEST, Html(template.render().unwrap())).into_response();
+        }
+    };
+
+    // Verify password confirmation matches
+    if form.password != form.password_confirmation {
+        let template = RegisterTemplate {
+            error: Some("Passwords do not match".to_string()),
+        };
+        return (StatusCode::BAD_REQUEST, Html(template.render().unwrap())).into_response();
+    }
+
+    // Create user in database with hashed password
+    let create_user = CreateUser {
+        email,
+        password: form.password,
+    };
+
+    let user = match User::create(create_user, state.database_pool()).await {
+        Ok(user) => user,
+        Err(UserError::WeakPassword(msg)) => {
+            let template = RegisterTemplate {
+                error: Some(format!("Password requirements not met: {msg}")),
+            };
+            return (StatusCode::BAD_REQUEST, Html(template.render().unwrap())).into_response();
+        }
+        Err(UserError::DatabaseError(sqlx::Error::Database(db_err)))
+            if db_err.message().contains("duplicate") || db_err.message().contains("unique") => {
+            let template = RegisterTemplate {
+                error: Some("An account with this email already exists".to_string()),
+            };
+            return (StatusCode::CONFLICT, Html(template.render().unwrap())).into_response();
+        }
+        Err(e) => {
+            tracing::error!("Registration error: {}", e);
+            let template = RegisterTemplate {
+                error: Some("An error occurred during registration. Please try again.".to_string()),
+            };
+            return (StatusCode::INTERNAL_SERVER_ERROR, Html(template.render().unwrap())).into_response();
+        }
+    };
+
+    // Auto-login after successful registration
+    session.set_user_id(Some(user.id));
+
+    // Add success flash message
+    session.add_flash(FlashMessage {
+        level: FlashLevel::Success,
+        message: "Account created successfully! Welcome!".to_string(),
+    });
+
+    Redirect::to("/").into_response()
 }
 
 /// Logout
 pub async fn logout(mut session: Session) -> impl IntoResponse {
-    session.clear().await.unwrap();
-    Redirect::to("/")
+    // Clear user ID from session
+    session.set_user_id(None);
+
+    // Add info flash message
+    session.add_flash(FlashMessage {
+        level: FlashLevel::Info,
+        message: "You have been logged out.".to_string(),
+    });
+
+    Redirect::to("/login").into_response()
 }
 "#;
 
 /// Models module template
 pub const MODELS_MOD: &str = r"//! Domain models
+//!
+//! Re-exports framework types and can include application-specific models.
 
-pub mod user;
-pub use user::User;
+// Re-export User model from framework
+pub use acton_htmx::auth::{User, EmailAddress, CreateUser};
+
+// Add your application-specific models here
+// Example:
+// pub mod post;
+// pub use post::Post;
 ";
 
-/// User model template
-pub const MODELS_USER: &str = r"//! User model
-
-use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
-
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct User {
-    pub id: i32,
-    pub email: String,
-    #[serde(skip_serializing)]
-    pub password_hash: String,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub updated_at: chrono::DateTime<chrono::Utc>,
-}
-
-impl User {
-    /// Verify password
-    pub fn verify_password(&self, password: &str) -> bool {
-        // TODO: Implement actual password verification with Argon2
-        false
-    }
-}
-";
+/// User model template (no longer needed as we use framework's User)
+/// This constant is kept for backwards compatibility but generates an empty file
+pub const MODELS_USER: &str = "//! User model\n\
+//!\n\
+//! The User model is provided by the acton-htmx framework.\n\
+//! It includes:\n\
+//! - Argon2id password hashing (OWASP recommended)\n\
+//! - Email validation and normalization\n\
+//! - Database operations (create, find_by_email, find_by_id, authenticate)\n\
+//! - Role-based authorization support\n\
+//! - Password strength validation\n\
+//!\n\
+//! See the acton-htmx documentation for full API:\n\
+//! https://docs.rs/acton-htmx/latest/acton_htmx/auth/struct.User.html\n\
+//!\n\
+//! Example usage:\n\
+//!\n\
+//! ```rust,ignore\n\
+//! use acton_htmx::auth::{User, EmailAddress, CreateUser};\n\
+//! use sqlx::PgPool;\n\
+//!\n\
+//! // Create a new user with hashed password\n\
+//! let email = EmailAddress::parse(\"user@example.com\")?;\n\
+//! let create_user = CreateUser {\n\
+//!     email,\n\
+//!     password: \"SecurePass123\".to_string(),\n\
+//! };\n\
+//! let user = User::create(create_user, &pool).await?;\n\
+//!\n\
+//! // Authenticate a user\n\
+//! let email = EmailAddress::parse(\"user@example.com\")?;\n\
+//! let user = User::authenticate(&email, \"SecurePass123\", &pool).await?;\n\
+//!\n\
+//! // Verify password\n\
+//! if user.verify_password(\"SecurePass123\")? {\n\
+//!     println!(\"Password correct!\");\n\
+//! }\n\
+//!\n\
+//! // Find user by email\n\
+//! let user = User::find_by_email(&email, &pool).await?;\n\
+//!\n\
+//! // Find user by ID\n\
+//! let user = User::find_by_id(user_id, &pool).await?;\n\
+//! ```\n\
+\n\
+// Re-export from framework\n\
+pub use acton_htmx::auth::User;\n";
 
 /// Base HTML template
 pub const TEMPLATE_BASE: &str = r#"<!DOCTYPE html>
