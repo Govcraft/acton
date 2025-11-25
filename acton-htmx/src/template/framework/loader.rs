@@ -27,6 +27,24 @@ pub enum FrameworkTemplateError {
     /// XDG directory resolution failed
     #[error("failed to resolve XDG directory: {0}")]
     XdgError(String),
+
+    /// Templates not initialized - user needs to run CLI
+    #[error(
+        "Framework templates not found.\n\n\
+        Templates must exist in one of these locations:\n\
+        - {config_dir}\n\
+        - {cache_dir}\n\n\
+        To initialize templates, run:\n\
+        \x1b[1m  acton-htmx templates init\x1b[0m\n\n\
+        Or download manually from:\n\
+        \x1b[4mhttps://github.com/Govcraft/acton-htmx/tree/main/templates/framework\x1b[0m"
+    )]
+    TemplatesNotInitialized {
+        /// Config directory path
+        config_dir: String,
+        /// Cache directory path
+        cache_dir: String,
+    },
 }
 
 /// Thread-safe framework template environment with hot reload support
@@ -43,14 +61,19 @@ pub struct FrameworkTemplates {
 impl FrameworkTemplates {
     /// Create a new framework templates instance
     ///
-    /// Loads templates from XDG directories with embedded fallbacks.
+    /// Loads templates from XDG directories. Templates MUST exist on disk
+    /// (either in config or cache directory). Run `acton-htmx templates init`
+    /// to download them.
     ///
     /// # Errors
     ///
-    /// Returns error if templates cannot be loaded.
+    /// Returns error if templates are not found or cannot be loaded.
     pub fn new() -> Result<Self, FrameworkTemplateError> {
         let config_dir = Self::get_config_dir();
         let cache_dir = Self::get_cache_dir();
+
+        // Verify templates exist before loading
+        Self::verify_templates_exist(config_dir.as_ref(), cache_dir.as_ref())?;
 
         let env = Self::create_environment(config_dir.as_ref(), cache_dir.as_ref())?;
 
@@ -59,6 +82,36 @@ impl FrameworkTemplates {
             config_dir,
             cache_dir,
         })
+    }
+
+    /// Verify that templates exist in at least one XDG location
+    fn verify_templates_exist(
+        config_dir: Option<&PathBuf>,
+        cache_dir: Option<&PathBuf>,
+    ) -> Result<(), FrameworkTemplateError> {
+        // Check if at least one required template exists
+        let test_template = "forms/form.html";
+
+        let config_exists = config_dir
+            .map(|d| d.join(test_template).exists())
+            .unwrap_or(false);
+
+        let cache_exists = cache_dir
+            .map(|d| d.join(test_template).exists())
+            .unwrap_or(false);
+
+        if !config_exists && !cache_exists {
+            return Err(FrameworkTemplateError::TemplatesNotInitialized {
+                config_dir: config_dir
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|| "~/.config/acton-htmx/templates/framework".to_string()),
+                cache_dir: cache_dir
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|| "~/.cache/acton-htmx/templates/framework".to_string()),
+            });
+        }
+
+        Ok(())
     }
 
     /// Get the XDG config directory for framework templates
@@ -110,6 +163,9 @@ impl FrameworkTemplates {
     }
 
     /// Load template content with XDG resolution order
+    ///
+    /// Templates are loaded from disk only - no embedded fallback.
+    /// Order: config (customizations) > cache (defaults)
     fn load_template_content(
         name: &str,
         config_dir: Option<&PathBuf>,
@@ -133,11 +189,22 @@ impl FrameworkTemplates {
             }
         }
 
-        // 3. Embedded fallback
-        EMBEDDED_TEMPLATES
-            .get(name)
-            .map(|s| (*s).to_string())
-            .ok_or_else(|| FrameworkTemplateError::NotFound(name.to_string()))
+        // No embedded fallback - templates must be on disk
+        Err(FrameworkTemplateError::NotFound(name.to_string()))
+    }
+
+    /// Get embedded template content (for CLI to write to cache)
+    ///
+    /// This is used by the CLI `templates init` command to populate the cache.
+    #[must_use]
+    pub fn get_embedded_template(name: &str) -> Option<&'static str> {
+        EMBEDDED_TEMPLATES.get(name).copied()
+    }
+
+    /// Get all embedded template names
+    #[must_use]
+    pub fn embedded_template_names() -> impl Iterator<Item = &'static str> {
+        EMBEDDED_TEMPLATES.keys().copied()
     }
 
     /// Render a template with the given context

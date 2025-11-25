@@ -58,11 +58,16 @@ pub fn csrf_token() -> String {
 /// Generate CSRF token input field with a specific token value
 ///
 /// Used when the token is provided from the session.
+///
+/// # Panics
+///
+/// Panics if the CSRF template cannot be rendered. Ensure templates are
+/// initialized via `acton-htmx templates init` before using this function.
 #[must_use]
 pub fn csrf_token_with(token: &str) -> String {
     templates()
         .render("forms/csrf-input.html", minijinja::context! { token => token })
-        .unwrap_or_else(|_| format!(r#"<input type="hidden" name="_csrf_token" value="{token}">"#))
+        .expect("Failed to render CSRF token template - run `acton-htmx templates init`")
 }
 
 /// Render flash messages as HTML
@@ -135,29 +140,7 @@ pub fn flash_messages(messages: &[FlashMessage]) -> String {
                 messages => msgs,
             },
         )
-        .unwrap_or_else(|e| {
-            tracing::error!(error = ?e, "Failed to render flash messages template");
-            fallback_flash_messages(messages)
-        })
-}
-
-/// Fallback flash message rendering if template fails
-fn fallback_flash_messages(messages: &[FlashMessage]) -> String {
-    use std::fmt::Write;
-
-    let mut html = String::from(r#"<div class="flash-messages" role="status" aria-live="polite">"#);
-
-    for msg in messages {
-        let _ = write!(html, r#"<div class="{}" role="alert">"#, msg.css_class());
-        if let Some(title) = &msg.title {
-            let _ = write!(html, "<strong>{}</strong> ", escape_html(title));
-        }
-        let _ = write!(html, "<span>{}</span>", escape_html(&msg.message));
-        html.push_str("</div>");
-    }
-
-    html.push_str("</div>");
-    html
+        .expect("Failed to render flash messages template - run `acton-htmx templates init`")
 }
 
 // Note: The route() helper has been removed as named routes are not currently implemented.
@@ -448,19 +431,8 @@ pub fn validation_errors_for(errors: &validator::ValidationErrors, field: &str) 
                     errors => error_messages,
                 },
             )
-            .unwrap_or_else(|_| fallback_field_errors(&error_messages))
+            .expect("Failed to render field errors template - run `acton-htmx templates init`")
     })
-}
-
-/// Fallback field error rendering if template fails
-fn fallback_field_errors(errors: &[String]) -> String {
-    use std::fmt::Write;
-    let mut html = String::from(r#"<div class="field-errors">"#);
-    for message in errors {
-        let _ = write!(html, r#"<span class="error">{message}</span>"#);
-    }
-    html.push_str("</div>");
-    html
 }
 
 /// Check if a field has validation errors
@@ -548,18 +520,7 @@ pub fn validation_errors_list(errors: &validator::ValidationErrors) -> String {
                 errors => error_messages,
             },
         )
-        .unwrap_or_else(|_| fallback_validation_summary(&error_messages))
-}
-
-/// Fallback validation summary rendering if template fails
-fn fallback_validation_summary(errors: &[String]) -> String {
-    use std::fmt::Write;
-    let mut html = String::from(r#"<div class="validation-errors"><ul>"#);
-    for message in errors {
-        let _ = write!(html, "<li>{message}</li>");
-    }
-    html.push_str("</ul></div>");
-    html
+        .expect("Failed to render validation summary template - run `acton-htmx templates init`")
 }
 
 #[cfg(test)]

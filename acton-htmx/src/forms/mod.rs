@@ -72,11 +72,13 @@ mod builder;
 mod error;
 mod field;
 mod render;
+mod template_render;
 
 pub use builder::{FieldBuilder, FileFieldBuilder, FormBuilder};
 pub use error::{FieldError, ValidationErrors};
 pub use field::{FileFieldAttrs, FormField, InputType, SelectOption};
 pub use render::{FormRenderOptions, FormRenderer};
+pub use template_render::{FormRenderError, TemplateFormRenderer};
 
 #[cfg(test)]
 mod tests {

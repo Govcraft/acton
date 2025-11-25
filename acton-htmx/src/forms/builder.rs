@@ -348,10 +348,57 @@ impl<'a> FormBuilder<'a> {
         self
     }
 
-    /// Build the form HTML
+    /// Build the form HTML using programmatic rendering
+    ///
+    /// This uses the built-in programmatic renderer. For template-based
+    /// rendering that allows customization, use [`build_with_templates`].
     #[must_use]
     pub fn build(self) -> String {
         FormRenderer::render(&self)
+    }
+
+    /// Build the form HTML using template-based rendering
+    ///
+    /// This uses minijinja templates from the XDG template directory,
+    /// allowing users to customize the HTML structure.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if template rendering fails.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use acton_htmx::forms::{FormBuilder, InputType};
+    /// use acton_htmx::template::framework::FrameworkTemplates;
+    ///
+    /// let templates = FrameworkTemplates::new()?;
+    /// let html = FormBuilder::new("/login", "POST")
+    ///     .field("email", InputType::Email)
+    ///         .label("Email")
+    ///         .done()
+    ///     .build_with_templates(&templates)?;
+    /// ```
+    pub fn build_with_templates(
+        self,
+        templates: &crate::template::framework::FrameworkTemplates,
+    ) -> Result<String, super::template_render::FormRenderError> {
+        let renderer = super::template_render::TemplateFormRenderer::new(templates);
+        renderer.render(&self)
+    }
+
+    /// Build the form HTML using template-based rendering with custom options
+    ///
+    /// # Errors
+    ///
+    /// Returns error if template rendering fails.
+    pub fn build_with_templates_and_options(
+        self,
+        templates: &crate::template::framework::FrameworkTemplates,
+        options: super::render::FormRenderOptions,
+    ) -> Result<String, super::template_render::FormRenderError> {
+        let renderer = super::template_render::TemplateFormRenderer::with_options(templates, options);
+        renderer.render(&self)
     }
 }
 
