@@ -1,0 +1,15 @@
+-- Create users table (PostgreSQL)
+
+CREATE TABLE users (
+    id BIGSERIAL PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    roles TEXT[] NOT NULL DEFAULT '{"user"}',
+    permissions TEXT[] NOT NULL DEFAULT '{}',
+    email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_roles ON users USING GIN(roles);

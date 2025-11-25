@@ -1,0 +1,21 @@
+//! Home page handler
+
+use acton_htmx::prelude::*;
+use askama::Template;
+use axum::response::Html;
+
+#[derive(Template)]
+#[template(path = "home.html")]
+pub struct HomeTemplate {
+    pub user_id: Option<i64>,
+    pub flash_messages: Vec<acton_htmx::auth::FlashMessage>,
+}
+
+/// GET / - Home page
+pub async fn index(session: SessionExtractor) -> Html<String> {
+    let template = HomeTemplate {
+        user_id: session.data.user_id,
+        flash_messages: session.data.flash_messages.clone(),
+    };
+    Html(template.render().unwrap())
+}

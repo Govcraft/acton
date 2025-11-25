@@ -1,0 +1,113 @@
+//! {{project_name}} - Built with acton-htmx
+
+#![forbid(unsafe_code)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery)]
+#![warn(clippy::cargo)]
+#![allow(clippy::multiple_crate_versions)]
+
+use acton_htmx::prelude::*;
+use acton_htmx::agents::{CsrfManagerAgent, SessionManagerAgent};
+use acton_htmx::middleware::{SecurityHeadersConfig, SecurityHeadersLayer, SessionLayer};
+use std::sync::Arc;
+
+mod handlers;
+mod models;
+
+use handlers::{auth, home};
+
+/// Application state with acton-reactive agents
+#[derive(Clone)]
+pub struct AppState {
+    db: Arc<sqlx::SqlitePool>,
+    session_manager: acton_reactive::prelude::AgentHandle,
+    csrf_manager: acton_reactive::prelude::AgentHandle,
+}
+
+impl AppState {
+    /// Create new application state, spawning all agents
+    pub async fn new(
+        runtime: &mut acton_reactive::prelude::AgentRuntime,
+        db: sqlx::SqlitePool,
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            db: Arc::new(db),
+            session_manager: SessionManagerAgent::spawn(runtime).await?,
+            csrf_manager: CsrfManagerAgent::spawn(runtime).await?,
+        })
+    }
+
+    /// Get the database pool
+    #[must_use]
+    pub fn db(&self) -> &sqlx::SqlitePool {
+        &self.db
+    }
+
+    /// Get the session manager agent handle
+    #[must_use]
+    pub const fn session_manager(&self) -> &acton_reactive::prelude::AgentHandle {
+        &self.session_manager
+    }
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // Initialize tracing
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "{{project_name_snake}}=debug,tower_http=debug".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
+    // Ensure data directory exists for SQLite
+    std::fs::create_dir_all("data")?;
+
+    // Initialize SQLite database (created automatically with mode=rwc)
+    let db = sqlx::sqlite::SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect("sqlite:data/dev.db?mode=rwc")
+        .await?;
+
+    // Run migrations automatically
+    tracing::info!("Running database migrations...");
+    sqlx::migrate!("./migrations").run(&db).await?;
+    tracing::info!("Migrations complete!");
+
+    // Launch acton-reactive runtime
+    let mut runtime = acton_reactive::prelude::ActonApp::launch();
+
+    // Create application state (spawns agents)
+    let state = AppState::new(&mut runtime, db).await?;
+
+    // Build router with session middleware using the agent handle
+    let session_layer = SessionLayer::from_handle(state.session_manager().clone());
+
+    let app = axum::Router::new()
+        // Public routes
+        .route("/", axum::routing::get(home::index))
+        .route("/login", axum::routing::get(auth::login_form).post(auth::login))
+        .route("/register", axum::routing::get(auth::register_form).post(auth::register))
+        .route("/logout", axum::routing::post(auth::logout))
+        // Static files
+        .nest_service("/static", tower_http::services::ServeDir::new("static"))
+        // Middleware
+        .layer(SecurityHeadersLayer::new(SecurityHeadersConfig::development()))
+        .layer(session_layer)
+        .layer(tower_http::trace::TraceLayer::new_for_http())
+        // State
+        .with_state(state);
+
+    // Start server
+    let addr = "127.0.0.1:3000";
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+
+    tracing::info!("Starting server on http://{}", addr);
+
+    axum::serve(listener, app).await?;
+
+    // Shutdown agents gracefully
+    runtime.shutdown_all().await?;
+
+    Ok(())
+}

@@ -1,0 +1,23 @@
+# Production configuration for {{project_name}}
+# Override these values with environment variables or a local config file
+
+[server]
+host = "0.0.0.0"
+port = 3000
+
+[database]
+# Use environment variable DATABASE_URL in production
+url = "sqlite:data/prod.db?mode=rwc"
+max_connections = 10
+
+[session]
+# IMPORTANT: Set a strong secret key via environment variable
+secret_key = "${SESSION_SECRET_KEY}"
+cookie_name = "{{project_name_snake}}_session"
+cookie_secure = true
+cookie_http_only = true
+ttl_seconds = 86400
+
+[security]
+csrf_enabled = true
+security_headers = true

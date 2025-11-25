@@ -1,0 +1,5 @@
+{%- for flash in flash_messages %}
+<div class="flash flash-{{ flash.level|lower }}">
+    {{ flash.message }}
+</div>
+{%- endfor %}

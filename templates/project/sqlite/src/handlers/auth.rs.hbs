@@ -1,0 +1,259 @@
+//! Authentication handlers with SQLite database integration
+//!
+//! Provides login, registration, and logout functionality with:
+//! - Argon2id password hashing
+//! - Session-based authentication
+//! - Flash messages for user feedback
+//! - Form validation
+
+use crate::AppState;
+use acton_htmx::prelude::*;
+use acton_htmx::auth::{FlashLevel, FlashMessage, hash_password, verify_password};
+use askama::Template;
+use axum::{
+    extract::State,
+    response::{Html, IntoResponse, Redirect, Response},
+    Form,
+};
+use serde::Deserialize;
+
+/// User row from SQLite database
+#[derive(Debug, Clone, sqlx::FromRow)]
+struct UserRow {
+    id: i64,
+    email: String,
+    password_hash: String,
+}
+
+// =============================================================================
+// Templates
+// =============================================================================
+
+#[derive(Template)]
+#[template(path = "auth/login.html")]
+pub struct LoginTemplate {
+    pub error: Option<String>,
+    pub flash_messages: Vec<FlashMessage>,
+}
+
+#[derive(Template)]
+#[template(path = "auth/register.html")]
+pub struct RegisterTemplate {
+    pub error: Option<String>,
+    pub flash_messages: Vec<FlashMessage>,
+}
+
+// =============================================================================
+// Form Data
+// =============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct LoginForm {
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RegisterForm {
+    pub email: String,
+    pub password: String,
+    pub password_confirm: String,
+}
+
+// =============================================================================
+// Handlers
+// =============================================================================
+
+/// GET /login - Show login form
+pub async fn login_form(
+    session: SessionExtractor,
+) -> Html<String> {
+    let flash_messages = session.data.flash_messages.clone();
+    let template = LoginTemplate {
+        error: None,
+        flash_messages,
+    };
+    Html(template.render().unwrap())
+}
+
+/// POST /login - Process login
+pub async fn login(
+    State(state): State<AppState>,
+    mut session: SessionExtractor,
+    Form(form): Form<LoginForm>,
+) -> Response {
+    // Validate form
+    if form.email.is_empty() || form.password.is_empty() {
+        let template = LoginTemplate {
+            error: Some("Email and password are required".to_string()),
+            flash_messages: vec![],
+        };
+        return Html(template.render().unwrap()).into_response();
+    }
+
+    // Find user by email
+    let user = match sqlx::query_as::<_, UserRow>(
+        "SELECT id, email, password_hash FROM users WHERE email = ?"
+    )
+    .bind(&form.email.to_lowercase())
+    .fetch_optional(state.db())
+    .await
+    {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            let template = LoginTemplate {
+                error: Some("Invalid email or password".to_string()),
+                flash_messages: vec![],
+            };
+            return Html(template.render().unwrap()).into_response();
+        }
+        Err(e) => {
+            tracing::error!("Database error during login: {}", e);
+            let template = LoginTemplate {
+                error: Some("An error occurred. Please try again.".to_string()),
+                flash_messages: vec![],
+            };
+            return Html(template.render().unwrap()).into_response();
+        }
+    };
+
+    // Verify password
+    match verify_password(&form.password, &user.password_hash) {
+        Ok(true) => {
+            // Set user ID in session
+            session.data.user_id = Some(user.id);
+            session.data.flash_messages.push(FlashMessage::new(
+                FlashLevel::Success,
+                "Successfully logged in!".to_string(),
+            ));
+            Redirect::to("/").into_response()
+        }
+        Ok(false) | Err(_) => {
+            let template = LoginTemplate {
+                error: Some("Invalid email or password".to_string()),
+                flash_messages: vec![],
+            };
+            Html(template.render().unwrap()).into_response()
+        }
+    }
+}
+
+/// GET /register - Show registration form
+pub async fn register_form(
+    session: SessionExtractor,
+) -> Html<String> {
+    let flash_messages = session.data.flash_messages.clone();
+    let template = RegisterTemplate {
+        error: None,
+        flash_messages,
+    };
+    Html(template.render().unwrap())
+}
+
+/// POST /register - Process registration
+pub async fn register(
+    State(state): State<AppState>,
+    mut session: SessionExtractor,
+    Form(form): Form<RegisterForm>,
+) -> Response {
+    // Validate form
+    if form.email.is_empty() {
+        let template = RegisterTemplate {
+            error: Some("Email is required".to_string()),
+            flash_messages: vec![],
+        };
+        return Html(template.render().unwrap()).into_response();
+    }
+
+    if form.password.len() < 8 {
+        let template = RegisterTemplate {
+            error: Some("Password must be at least 8 characters".to_string()),
+            flash_messages: vec![],
+        };
+        return Html(template.render().unwrap()).into_response();
+    }
+
+    if form.password != form.password_confirm {
+        let template = RegisterTemplate {
+            error: Some("Passwords do not match".to_string()),
+            flash_messages: vec![],
+        };
+        return Html(template.render().unwrap()).into_response();
+    }
+
+    // Check if email already exists
+    let exists = sqlx::query_scalar::<_, i32>(
+        "SELECT 1 FROM users WHERE email = ?"
+    )
+    .bind(&form.email.to_lowercase())
+    .fetch_optional(state.db())
+    .await;
+
+    if matches!(exists, Ok(Some(_))) {
+        let template = RegisterTemplate {
+            error: Some("Email already registered".to_string()),
+            flash_messages: vec![],
+        };
+        return Html(template.render().unwrap()).into_response();
+    }
+
+    // Hash password
+    let password_hash = match hash_password(&form.password) {
+        Ok(hash) => hash,
+        Err(e) => {
+            tracing::error!("Password hashing failed: {}", e);
+            let template = RegisterTemplate {
+                error: Some("An error occurred. Please try again.".to_string()),
+                flash_messages: vec![],
+            };
+            return Html(template.render().unwrap()).into_response();
+        }
+    };
+
+    // Create user
+    let result = sqlx::query(
+        r#"
+        INSERT INTO users (email, password_hash, roles, permissions, email_verified)
+        VALUES (?, ?, '["user"]', '[]', 0)
+        "#
+    )
+    .bind(&form.email.to_lowercase())
+    .bind(&password_hash)
+    .execute(state.db())
+    .await;
+
+    match result {
+        Ok(result) => {
+            let user_id = result.last_insert_rowid();
+
+            // Auto-login after registration
+            session.data.user_id = Some(user_id);
+            session.data.flash_messages.push(FlashMessage::new(
+                FlashLevel::Success,
+                "Account created successfully! Welcome!".to_string(),
+            ));
+            Redirect::to("/").into_response()
+        }
+        Err(e) => {
+            tracing::error!("Failed to create user: {}", e);
+            let template = RegisterTemplate {
+                error: Some("Failed to create account. Please try again.".to_string()),
+                flash_messages: vec![],
+            };
+            Html(template.render().unwrap()).into_response()
+        }
+    }
+}
+
+/// POST /logout - Clear session and logout
+pub async fn logout(
+    mut session: SessionExtractor,
+) -> Response {
+    // Clear user ID from session
+    session.data.user_id = None;
+    session.data.flash_messages.push(FlashMessage::new(
+        FlashLevel::Info,
+        "You have been logged out.".to_string(),
+    ));
+    Redirect::to("/login").into_response()
+}

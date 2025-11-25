@@ -1,0 +1,99 @@
+# {{project_name}}
+
+A web application built with [acton-htmx](https://github.com/govcraft/acton-htmx), an opinionated Rust framework for server-rendered HTMX applications.
+
+## Quick Start
+
+### Prerequisites
+
+- Rust 1.75 or later
+- acton-htmx CLI: `cargo install acton-htmx-cli`
+
+### Setup
+
+```bash
+# Start development server (database created automatically!)
+acton-htmx dev
+```
+
+Open http://localhost:3000
+
+That's it! No database setup required. SQLite is used for development.
+
+## Project Structure
+
+```
+{{project_name}}/
+├── src/
+│   ├── main.rs              # Application entry point
+│   ├── handlers/            # HTTP request handlers
+│   │   ├── mod.rs
+│   │   ├── home.rs
+│   │   └── auth.rs
+│   └── models/              # Domain models
+│       └── mod.rs
+├── templates/               # Askama templates
+│   ├── layouts/
+│   ├── auth/
+│   └── partials/
+├── static/                  # Static assets
+│   └── css/
+├── config/                  # Configuration files
+│   ├── development.toml
+│   └── production.toml
+├── data/                    # SQLite database files
+│   └── dev.db              # Created on first run
+└── migrations/              # Database migrations
+```
+
+## Development
+
+### Running Tests
+
+```bash
+cargo test
+```
+
+### Database Commands
+
+```bash
+# Run migrations (automatic on startup)
+acton-htmx db migrate
+
+# Reset database
+acton-htmx db reset
+
+# Create new migration
+acton-htmx db create <name>
+```
+
+### Building for Production
+
+```bash
+cargo build --release
+```
+
+## Switching to PostgreSQL
+
+For production, you may want to use PostgreSQL. Recreate the project with:
+
+```bash
+acton-htmx new {{project_name}} --database postgres
+```
+
+Or modify `config/production.toml` and `Cargo.toml` manually.
+
+## Features
+
+- ✅ HTMX-first architecture with server-side rendering
+- ✅ Session-based authentication with Argon2id
+- ✅ CSRF protection enabled by default
+- ✅ Security headers configured
+- ✅ SQLite for zero-setup development
+- ✅ Askama templates with compile-time checking
+- ✅ Form validation with validator crate
+- ✅ Flash messages via acton-reactive agents
+
+## License
+
+MIT

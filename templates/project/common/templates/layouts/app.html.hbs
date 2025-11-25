@@ -1,0 +1,15 @@
+{%- extends "layouts/base.html" %}
+
+{%- block body %}
+<div class="container">
+    {%- include "partials/nav.html" %}
+
+    <div id="flash-messages">
+        {%- include "partials/flash.html" %}
+    </div>
+
+    <main>
+        {%- block content %}{%- endblock %}
+    </main>
+</div>
+{%- endblock %}

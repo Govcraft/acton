@@ -1,0 +1,29 @@
+{%- extends "layouts/app.html" %}
+
+{%- block title %}Home - {{project_name}}{%- endblock %}
+
+{%- block content %}
+<div class="home">
+    <h1>Welcome to {{project_name}}!</h1>
+
+    {%- if let Some(id) = user_id %}
+    <p>You are logged in (user ID: {{ id }}). <form action="/logout" method="post" style="display:inline;"><button type="submit">Logout</button></form></p>
+    {%- else %}
+    <p>You are not logged in. <a href="/login">Login</a> or <a href="/register">Register</a></p>
+    {%- endif %}
+
+    <h2>Getting Started</h2>
+    <ul>
+        <li>Edit templates in <code>templates/</code></li>
+        <li>Add handlers in <code>src/handlers/</code></li>
+        <li>Define models in <code>src/models/</code></li>
+        <li>Update routes in <code>src/main.rs</code></li>
+    </ul>
+
+    <h2>Documentation</h2>
+    <ul>
+        <li><a href="https://htmx.org" target="_blank">HTMX Documentation</a></li>
+        <li><a href="https://github.com/govcraft/acton-htmx" target="_blank">acton-htmx Repository</a></li>
+    </ul>
+</div>
+{%- endblock %}

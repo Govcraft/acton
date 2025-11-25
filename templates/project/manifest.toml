@@ -1,0 +1,86 @@
+# Project Template Manifest
+# Defines all templates for generating new acton-htmx projects
+
+[meta]
+version = "1.0.0"
+description = "acton-htmx project scaffolding templates"
+
+# Common templates shared between SQLite and PostgreSQL
+[common]
+templates = [
+    # Source files
+    "src/handlers/mod.rs.hbs",
+    "src/handlers/home.rs.hbs",
+    "src/models/mod.rs.hbs",
+    # HTML templates
+    "templates/layouts/base.html.hbs",
+    "templates/layouts/app.html.hbs",
+    "templates/partials/nav.html.hbs",
+    "templates/partials/flash.html.hbs",
+    "templates/auth/login.html.hbs",
+    "templates/auth/register.html.hbs",
+    "templates/home.html.hbs",
+    # Static files
+    "static/css/app.css.hbs",
+    # Root files
+    ".gitignore.hbs",
+]
+
+# SQLite-specific templates
+[sqlite]
+templates = [
+    "Cargo.toml.hbs",
+    "README.md.hbs",
+    "src/main.rs.hbs",
+    "src/handlers/auth.rs.hbs",
+    "config/development.toml.hbs",
+    "config/production.toml.hbs",
+    "migrations/001_create_users.sql.hbs",
+]
+
+# PostgreSQL-specific templates
+[postgres]
+templates = [
+    "Cargo.toml.hbs",
+    "README.md.hbs",
+    "src/main.rs.hbs",
+    "src/handlers/auth.rs.hbs",
+    "config/development.toml.hbs",
+    "config/production.toml.hbs",
+    "migrations/001_create_users.sql.hbs",
+]
+
+# Directories to create (even if empty)
+[directories]
+sqlite = [
+    "src",
+    "src/handlers",
+    "src/models",
+    "templates",
+    "templates/layouts",
+    "templates/auth",
+    "templates/partials",
+    "config",
+    "migrations",
+    "static",
+    "static/css",
+    "static/js",
+    "tests",
+    "data",  # SQLite-specific
+]
+
+postgres = [
+    "src",
+    "src/handlers",
+    "src/models",
+    "templates",
+    "templates/layouts",
+    "templates/auth",
+    "templates/partials",
+    "config",
+    "migrations",
+    "static",
+    "static/css",
+    "static/js",
+    "tests",
+]
