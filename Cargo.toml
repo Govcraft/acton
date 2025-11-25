@@ -22,7 +22,7 @@ doc_markdown = "allow"
 module_name_repetitions = "allow"
 
 [workspace.package]
-version = "1.0.0-beta.6"
+version = "1.0.0-beta.7"
 edition = "2021"
 rust-version = "1.83.0"
 authors = ["Acton Contributors"]
