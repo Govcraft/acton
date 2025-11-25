@@ -93,9 +93,13 @@ pub enum CedarError {
 
 #[cfg(feature = "cedar")]
 impl IntoResponse for CedarError {
-    #[allow(clippy::too_many_lines)] // Inline HTML template, acceptable
     fn into_response(self) -> Response {
         use axum::http::header;
+        use crate::template::FrameworkTemplates;
+        use std::sync::OnceLock;
+
+        // Lazily initialize templates for error page rendering
+        static TEMPLATES: OnceLock<FrameworkTemplates> = OnceLock::new();
 
         let (status, message, redirect_to_login) = match self {
             Self::Forbidden(_) => (
@@ -126,98 +130,20 @@ impl IntoResponse for CedarError {
                 .unwrap_or_else(|_| (status, message).into_response());
         }
 
-        // For forbidden (authenticated but not authorized), return 403 with message
-        // Build HTML response that works for both HTMX and full page requests
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{status} - Access Denied</title>
-    <style>
-        body {{
-            font-family: system-ui, -apple-system, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }}
-        .error-container {{
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-            padding: 3rem;
-            text-align: center;
-            max-width: 500px;
-            margin: 2rem;
-        }}
-        h1 {{
-            color: #dc2626;
-            font-size: 4rem;
-            margin: 0 0 1rem 0;
-            font-weight: 700;
-        }}
-        h2 {{
-            color: #374151;
-            font-size: 1.5rem;
-            margin: 0 0 1rem 0;
-            font-weight: 600;
-        }}
-        p {{
-            color: #6b7280;
-            line-height: 1.6;
-            margin: 0 0 2rem 0;
-        }}
-        .actions {{
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            flex-wrap: wrap;
-        }}
-        a {{
-            display: inline-block;
-            padding: 0.75rem 1.5rem;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 500;
-            transition: all 0.2s;
-        }}
-        .primary {{
-            background: #667eea;
-            color: white;
-        }}
-        .primary:hover {{
-            background: #5a67d8;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }}
-        .secondary {{
-            background: #e5e7eb;
-            color: #374151;
-        }}
-        .secondary:hover {{
-            background: #d1d5db;
-        }}
-    </style>
-</head>
-<body>
-    <div class="error-container">
-        <h1>{status}</h1>
-        <h2>Access Denied</h2>
-        <p>{message}</p>
-        <div class="actions">
-            <a href="javascript:history.back()" class="secondary">Go Back</a>
-            <a href="/" class="primary">Return Home</a>
-        </div>
-    </div>
-</body>
-</html>"#,
-            status = status.as_u16(),
-            message = message
-        );
+        // Render error page using framework templates
+        let html = TEMPLATES
+            .get_or_init(|| FrameworkTemplates::new().expect("Failed to initialize templates"))
+            .render(
+                &format!("errors/{}.html", status.as_u16()),
+                minijinja::context! {
+                    message => message,
+                    home_url => "/",
+                },
+            )
+            .unwrap_or_else(|e| {
+                tracing::error!(error = ?e, "Failed to render error template");
+                format!("<h1>{}</h1><p>{}</p>", status.as_u16(), message)
+            });
 
         (status, [(header::CONTENT_TYPE, "text/html; charset=utf-8")], html).into_response()
     }
