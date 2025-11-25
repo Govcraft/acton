@@ -1,0 +1,9 @@
+<input type="checkbox" name="{{ name }}" id="{{ id }}" value="{{ checkbox_value }}"
+{%- if class %} class="{{ class }}"{% endif %}
+{%- if checked %} checked{% endif %}
+{%- if required %} required{% endif %}
+{%- if disabled %} disabled{% endif %}
+{%- for attr_name, attr_value in extra_attrs %} {{ attr_name }}="{{ attr_value }}"{% endfor %}>
+{%- if label %}
+<label for="{{ id }}"{% if label_class %} class="{{ label_class }}"{% endif %}>{{ label }}</label>
+{%- endif %}

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>404 - Not Found</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            color: #333;
+        }
+        .error-container {
+            background: white;
+            padding: 3rem;
+            border-radius: 1rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            text-align: center;
+            max-width: 500px;
+        }
+        h1 { font-size: 6rem; margin: 0; color: #4299e1; }
+        h2 { font-size: 1.5rem; margin: 0.5rem 0; color: #4a5568; }
+        p { color: #718096; margin: 1.5rem 0; line-height: 1.6; }
+        .actions { margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; }
+        a {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        a.primary { background: #667eea; color: white; }
+        a.primary:hover { background: #5a67d8; }
+        a.secondary { background: #edf2f7; color: #4a5568; }
+        a.secondary:hover { background: #e2e8f0; }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1>404</h1>
+        <h2>Not Found</h2>
+        <p>{{ message }}</p>
+        <div class="actions">
+            <a href="javascript:history.back()" class="secondary">Go Back</a>
+            <a href="{{ home_url }}" class="primary">Return Home</a>
+        </div>
+    </div>
+</body>
+</html>

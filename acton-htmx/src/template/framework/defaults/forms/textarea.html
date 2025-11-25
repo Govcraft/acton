@@ -1,0 +1,11 @@
+<textarea name="{{ name }}" id="{{ id }}"
+{%- if class %} class="{{ class }}"{% endif %}
+{%- if placeholder %} placeholder="{{ placeholder }}"{% endif %}
+{%- if required %} required{% endif %}
+{%- if disabled %} disabled{% endif %}
+{%- if readonly %} readonly{% endif %}
+{%- if rows %} rows="{{ rows }}"{% endif %}
+{%- if cols %} cols="{{ cols }}"{% endif %}
+{%- if minlength %} minlength="{{ minlength }}"{% endif %}
+{%- if maxlength %} maxlength="{{ maxlength }}"{% endif %}
+{%- for name, value in extra_attrs %} {{ name }}="{{ value }}"{% endfor %}>{{ text_value }}</textarea>

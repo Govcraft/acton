@@ -1,0 +1,21 @@
+<input type="{{ input_type }}" name="{{ name }}" id="{{ id }}"
+{%- if value %} value="{{ value }}"{% endif %}
+{%- if class %} class="{{ class }}"{% endif %}
+{%- if placeholder %} placeholder="{{ placeholder }}"{% endif %}
+{%- if required %} required{% endif %}
+{%- if disabled %} disabled{% endif %}
+{%- if readonly %} readonly{% endif %}
+{%- if min is defined %} min="{{ min }}"{% endif %}
+{%- if max is defined %} max="{{ max }}"{% endif %}
+{%- if step %} step="{{ step }}"{% endif %}
+{%- if minlength %} minlength="{{ minlength }}"{% endif %}
+{%- if maxlength %} maxlength="{{ maxlength }}"{% endif %}
+{%- if pattern %} pattern="{{ pattern }}"{% endif %}
+{%- if autocomplete %} autocomplete="{{ autocomplete }}"{% endif %}
+{%- if accept %} accept="{{ accept }}"{% endif %}
+{%- if multiple %} multiple{% endif %}
+{%- if data_preview %} data-preview="true"{% endif %}
+{%- if data_drag_drop %} data-drag-drop="true"{% endif %}
+{%- if data_progress_url %} data-progress-url="{{ data_progress_url }}"{% endif %}
+{%- if data_max_size %} data-max-size="{{ data_max_size }}"{% endif %}
+{%- for name, value in extra_attrs %} {{ name }}="{{ value }}"{% endfor %}>

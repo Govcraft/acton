@@ -35,10 +35,12 @@ use axum::{
 };
 
 pub mod extractor;
+pub mod framework;
 pub mod helpers;
 pub mod registry;
 
 pub use extractor::*;
+pub use framework::{FrameworkTemplateError, FrameworkTemplates};
 pub use helpers::*;
 pub use registry::TemplateRegistry;
 

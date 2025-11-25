@@ -1,0 +1,10 @@
+<select name="{{ name }}" id="{{ id }}"
+{%- if class %} class="{{ class }}"{% endif %}
+{%- if required %} required{% endif %}
+{%- if disabled %} disabled{% endif %}
+{%- if multiple %} multiple{% endif %}
+{%- for attr_name, attr_value in extra_attrs %} {{ attr_name }}="{{ attr_value }}"{% endfor %}>
+{%- for option in options %}
+<option value="{{ option.value }}"{% if option.selected %} selected{% endif %}{% if option.disabled %} disabled{% endif %}>{{ option.label }}</option>
+{%- endfor %}
+</select>

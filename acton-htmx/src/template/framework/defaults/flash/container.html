@@ -1,0 +1,10 @@
+<div class="{{ container_class }}" role="status" aria-live="polite">
+{%- for msg in messages %}
+<div class="{{ msg.css_class }}" role="alert">
+{%- if msg.title %}
+<strong>{{ msg.title }}</strong>
+{%- endif %}
+<span>{{ msg.message }}</span>
+</div>
+{%- endfor %}
+</div>

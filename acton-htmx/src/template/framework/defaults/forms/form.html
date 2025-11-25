@@ -1,0 +1,16 @@
+<form action="{{ action }}" method="{{ method }}"
+{%- if id %} id="{{ id }}"{% endif %}
+{%- if class %} class="{{ class }}"{% endif %}
+{%- if enctype %} enctype="{{ enctype }}"{% endif %}
+{%- for attr in hx_attrs %} {{ attr }}{% endfor %}>
+{%- if csrf_token %}
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+{%- endif %}
+{%- if hx_validate %}
+<input type="hidden" name="_hx_validate" value="true">
+{%- endif %}
+{{ content }}
+{%- if submit_label %}
+<button type="submit"{% if submit_class %} class="{{ submit_class }}"{% endif %}>{{ submit_label }}</button>
+{%- endif %}
+</form>

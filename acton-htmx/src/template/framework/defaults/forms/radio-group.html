@@ -1,0 +1,10 @@
+{%- for option in options %}
+<div class="{{ radio_wrapper_class }}">
+<input type="radio" name="{{ name }}" id="{{ option.id }}" value="{{ option.value }}"
+{%- if class %} class="{{ class }}"{% endif %}
+{%- if option.checked %} checked{% endif %}
+{%- if required and loop.first %} required{% endif %}
+{%- if disabled %} disabled{% endif %}>
+<label for="{{ option.id }}"{% if label_class %} class="{{ label_class }}"{% endif %}>{{ option.label }}</label>
+</div>
+{%- endfor %}
