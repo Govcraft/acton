@@ -95,6 +95,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/register", axum::routing::get(auth::register_form).post(auth::register))
         .route("/logout", axum::routing::post(auth::logout))
         // Static files
+        .route_service("/favicon.ico", tower_http::services::ServeFile::new("static/favicon.ico"))
         .nest_service("/static", tower_http::services::ServeDir::new("static"))
         // Middleware
         .layer(SecurityHeadersLayer::new(SecurityHeadersConfig::development()))
