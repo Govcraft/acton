@@ -49,7 +49,7 @@ const TEMPLATE_NAMES: &[&str] = &[
 
 /// GitHub base URL for framework templates
 const GITHUB_RAW_BASE: &str =
-    "https://raw.githubusercontent.com/Govcraft/acton-dx/main/acton-dx/src/template/framework/defaults";
+    "https://raw.githubusercontent.com/Govcraft/acton-dx/main/acton-dx/src/htmx/template/framework/defaults";
 
 /// Template management subcommands
 #[derive(Subcommand)]
