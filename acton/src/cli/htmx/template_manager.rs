@@ -1,7 +1,8 @@
 //! Template download and caching manager
 //!
 //! This module manages downloading scaffold templates from GitHub and caching them
-//! in the XDG config directory for offline use and user customization.
+//! in the XDG cache directory for offline use. User customizations should be placed
+//! in the XDG config directory.
 
 use anyhow::{Context, Result};
 use std::fs;
@@ -32,8 +33,8 @@ pub struct TemplateManager {
 impl TemplateManager {
     /// Create a new template manager
     ///
-    /// Templates are cached in `$XDG_CONFIG_HOME/acton-htmx/templates/scaffold/`
-    /// or `~/.config/acton-htmx/templates/scaffold/` if `XDG_CONFIG_HOME` is not set.
+    /// Templates are cached in `$XDG_CACHE_HOME/acton-htmx/templates/scaffold/`
+    /// or `~/.cache/acton-htmx/templates/scaffold/` if `XDG_CACHE_HOME` is not set.
     ///
     /// # Errors
     ///
@@ -46,17 +47,20 @@ impl TemplateManager {
         Ok(Self { cache_dir })
     }
 
-    /// Get the XDG config directory for templates
+    /// Get the XDG cache directory for templates
+    ///
+    /// Downloaded templates go in cache (regeneratable), while user customizations
+    /// would go in config (preserved across cache clears).
     fn get_cache_dir() -> Result<PathBuf> {
-        let config_dir = if let Ok(xdg_config) = std::env::var("XDG_CONFIG_HOME") {
-            PathBuf::from(xdg_config)
+        let cache_base = if let Ok(xdg_cache) = std::env::var("XDG_CACHE_HOME") {
+            PathBuf::from(xdg_cache)
         } else {
             let home = std::env::var("HOME")
                 .context("HOME environment variable not set")?;
-            PathBuf::from(home).join(".config")
+            PathBuf::from(home).join(".cache")
         };
 
-        Ok(config_dir.join("acton-htmx").join("templates").join("scaffold"))
+        Ok(cache_base.join("acton-htmx").join("templates").join("scaffold"))
     }
 
     /// Ensure all templates are available locally
@@ -164,18 +168,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_cache_dir_uses_xdg() {
-        std::env::set_var("XDG_CONFIG_HOME", "/tmp/test-xdg");
+    fn test_cache_dir_uses_xdg_cache_home() {
+        std::env::set_var("XDG_CACHE_HOME", "/tmp/test-xdg-cache");
         let dir = TemplateManager::get_cache_dir().unwrap();
-        assert_eq!(dir, PathBuf::from("/tmp/test-xdg/acton-htmx/templates/scaffold"));
+        assert_eq!(dir, PathBuf::from("/tmp/test-xdg-cache/acton-htmx/templates/scaffold"));
     }
 
     #[test]
-    fn test_cache_dir_falls_back_to_home() {
-        std::env::remove_var("XDG_CONFIG_HOME");
+    fn test_cache_dir_falls_back_to_home_cache() {
+        std::env::remove_var("XDG_CACHE_HOME");
         std::env::set_var("HOME", "/tmp/test-home");
         let dir = TemplateManager::get_cache_dir().unwrap();
-        assert_eq!(dir, PathBuf::from("/tmp/test-home/.config/acton-htmx/templates/scaffold"));
+        assert_eq!(dir, PathBuf::from("/tmp/test-home/.cache/acton-htmx/templates/scaffold"));
     }
 
     #[test]

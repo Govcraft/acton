@@ -5,7 +5,7 @@
 
 use inflector::Inflector;
 
-/// Template helpers for Handlebars code generation
+/// Template helpers for MiniJinja code generation
 pub struct TemplateHelpers;
 
 impl TemplateHelpers {
