@@ -4,7 +4,7 @@
 //!
 //! Run with: `cargo run --example email_demo`
 
-use acton::htmx::email::{ConsoleBackend, Email, EmailError, EmailSender, EmailTemplate};
+use acton_dx::email::{ConsoleBackend, Email, EmailError, EmailSender, EmailTemplate};
 use askama::Template;
 
 // ============================================================================
@@ -146,7 +146,7 @@ struct PasswordResetHtml {
     expires_in_minutes: u32,
 }
 
-impl acton::htmx::email::SimpleEmailTemplate for PasswordResetHtml {
+impl acton_dx::email::SimpleEmailTemplate for PasswordResetHtml {
     fn render_text(&self) -> Result<Option<String>, EmailError> {
         Ok(Some(format!(
             "Password Reset Request\n\n\

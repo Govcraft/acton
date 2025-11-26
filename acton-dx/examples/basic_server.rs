@@ -9,7 +9,7 @@
 //!
 //! Run with: `cargo run --example basic_server`
 
-use acton::htmx::{observability, prelude::*};
+use acton_dx::{observability, prelude::*};
 use acton_reactive::prelude::ActonApp;
 use axum::{extract::State, routing::get, Router};
 

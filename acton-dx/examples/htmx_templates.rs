@@ -7,8 +7,8 @@
 //!
 //! Run with: `cargo run --example htmx_templates`
 
-use acton::htmx::responses::{HxRequest, HxSwapOob, SwapStrategy};
-use acton::htmx::template::HxTemplate;
+use acton_dx::responses::{HxRequest, HxSwapOob, SwapStrategy};
+use acton_dx::template::HxTemplate;
 use askama::Template;
 use axum::{
     response::{Html, IntoResponse, Response},

@@ -11,7 +11,7 @@
 //! cargo run --example simple_htmx
 //! ```
 
-use acton::htmx::{observability, state::ActonHtmxState};
+use acton_dx::{observability, state::ActonHtmxState};
 use acton_reactive::prelude::ActonApp;
 use axum::{
     response::Html,

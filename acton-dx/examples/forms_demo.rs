@@ -4,7 +4,7 @@
 //!
 //! Run with: `cargo run --example forms_demo`
 
-use acton::htmx::prelude::*;
+use acton_dx::prelude::*;
 use axum::{
     extract::Form,
     response::Html,

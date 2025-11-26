@@ -8,8 +8,9 @@
 //! Note: Full end-to-end OAuth2 tests with token exchange and user creation
 //! would require mocking external OAuth providers and a test database.
 
-use acton::htmx::{
-    oauth2::{CleanupExpired, GenerateState, OAuth2Agent, OAuthConfig, OAuthProvider, ProviderConfig, RemoveState, ValidateState},
+use acton_dx::oauth2::{
+    CleanupExpired, GenerateState, OAuth2Agent, OAuthConfig, OAuthProvider, ProviderConfig,
+    RemoveState, ValidateState,
 };
 use acton_reactive::prelude::{ActonApp, AgentHandleInterface};
 
