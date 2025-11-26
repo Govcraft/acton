@@ -9,7 +9,7 @@ use std::fs;
 use std::path::PathBuf;
 
 /// GitHub raw content base URL for templates
-const GITHUB_RAW_BASE: &str = "https://raw.githubusercontent.com/Govcraft/acton-htmx/main/templates/scaffold";
+const GITHUB_RAW_BASE: &str = "https://raw.githubusercontent.com/Govcraft/acton-dx/main/templates/scaffold";
 
 /// Template files that should be downloaded
 const TEMPLATE_FILES: &[&str] = &[
@@ -33,8 +33,8 @@ pub struct TemplateManager {
 impl TemplateManager {
     /// Create a new template manager
     ///
-    /// Templates are cached in `$XDG_CACHE_HOME/acton-htmx/templates/scaffold/`
-    /// or `~/.cache/acton-htmx/templates/scaffold/` if `XDG_CACHE_HOME` is not set.
+    /// Templates are cached in `$XDG_CACHE_HOME/acton-dx/templates/scaffold/`
+    /// or `~/.cache/acton-dx/templates/scaffold/` if `XDG_CACHE_HOME` is not set.
     ///
     /// # Errors
     ///
@@ -60,7 +60,7 @@ impl TemplateManager {
             PathBuf::from(home).join(".cache")
         };
 
-        Ok(cache_base.join("acton-htmx").join("templates").join("scaffold"))
+        Ok(cache_base.join("acton-dx").join("templates").join("scaffold"))
     }
 
     /// Ensure all templates are available locally
@@ -171,7 +171,7 @@ mod tests {
     fn test_cache_dir_uses_xdg_cache_home() {
         std::env::set_var("XDG_CACHE_HOME", "/tmp/test-xdg-cache");
         let dir = TemplateManager::get_cache_dir().unwrap();
-        assert_eq!(dir, PathBuf::from("/tmp/test-xdg-cache/acton-htmx/templates/scaffold"));
+        assert_eq!(dir, PathBuf::from("/tmp/test-xdg-cache/acton-dx/templates/scaffold"));
     }
 
     #[test]
@@ -179,7 +179,7 @@ mod tests {
         std::env::remove_var("XDG_CACHE_HOME");
         std::env::set_var("HOME", "/tmp/test-home");
         let dir = TemplateManager::get_cache_dir().unwrap();
-        assert_eq!(dir, PathBuf::from("/tmp/test-home/.cache/acton-htmx/templates/scaffold"));
+        assert_eq!(dir, PathBuf::from("/tmp/test-home/.cache/acton-dx/templates/scaffold"));
     }
 
     #[test]

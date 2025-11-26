@@ -1,4 +1,4 @@
-//! Axum extractors for acton-htmx
+//! Axum extractors for acton-dx
 //!
 //! Provides extractors for accessing session data, flash messages,
 //! CSRF tokens, validation, file uploads, and other request context within handlers.

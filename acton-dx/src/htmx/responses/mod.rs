@@ -50,6 +50,6 @@ pub use axum_htmx::{
 // Re-export axum-htmx middleware and guards
 pub use axum_htmx::{AutoVaryLayer, HxRequestGuardLayer};
 
-// acton-htmx extensions
+// acton-dx extensions
 mod swap_oob;
 pub use swap_oob::{HxSwapOob, SwapStrategy};

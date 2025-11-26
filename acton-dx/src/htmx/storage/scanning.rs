@@ -275,7 +275,7 @@ pub enum ClamAvConnection {
 ///
 /// ```toml
 /// [dependencies]
-/// acton-htmx = { version = "1.0", features = ["clamav"] }
+/// acton-dx = { version = "1.0", features = ["clamav"] }
 /// ```
 ///
 /// # Examples

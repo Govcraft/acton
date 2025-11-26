@@ -1,10 +1,10 @@
-# acton-htmx
+# acton-dx
 
 > **Status**: 🟢 Phase 1 Complete - Documentation & Examples (Week 12)
 
 **Opinionated Rust web framework for server-rendered HTMX applications**
 
-acton-htmx is a production-grade web framework that gets you from idea to deployment in minutes, not days. Built on battle-tested components from the Acton ecosystem, it combines Axum's performance with HTMX's hypermedia-driven architecture.
+acton-dx is a production-grade web framework that gets you from idea to deployment in minutes, not days. Built on battle-tested components from the Acton ecosystem, it combines Axum's performance with HTMX's hypermedia-driven architecture.
 
 ## Design Principles
 
@@ -16,7 +16,7 @@ acton-htmx is a production-grade web framework that gets you from idea to deploy
 
 ## Features
 
-- ✅ **Zero-configuration setup** - `acton-htmx new myapp` and you're running
+- ✅ **Zero-configuration setup** - `acton-dx new myapp` and you're running
 - ✅ **HTMX response helpers** - Type-safe wrappers for HX-Redirect, HX-Trigger, HX-Swap-OOB, etc.
 - ✅ **Session-based authentication** - Secure HTTP-only cookies with automatic CSRF protection
 - ✅ **Template integration** - Compile-time checked Askama templates with automatic partial rendering
@@ -31,18 +31,18 @@ acton-htmx is a production-grade web framework that gets you from idea to deploy
 
 ```bash
 # Install CLI
-cargo install acton-htmx-cli
+cargo install acton-dx-cli
 
 # Create new project
-acton-htmx new blog
+acton-dx new blog
 cd blog
 
 # Set up database
 createdb blog_dev
-acton-htmx db migrate
+acton-dx db migrate
 
 # Start development server with hot reload
-acton-htmx dev
+acton-dx dev
 ```
 
 Visit `http://localhost:3000` to see your app running!
@@ -95,7 +95,7 @@ pub async fn create(
 
 ## Architecture
 
-acton-htmx reuses **60-70% of production infrastructure** from the Acton ecosystem:
+acton-dx reuses **60-70% of production infrastructure** from the Acton ecosystem:
 
 ### From [acton-service](https://github.com/GovCraft/acton-service)
 - Configuration (XDG + figment)
@@ -111,7 +111,7 @@ acton-htmx reuses **60-70% of production infrastructure** from the Acton ecosyst
 - Real-time features (SSE)
 - Cache coordination
 
-### HTMX-specific (new in acton-htmx)
+### HTMX-specific (new in acton-dx)
 - Response helpers (HxRedirect, HxTrigger, HxSwapOob, etc.)
 - Template integration (Askama with automatic partials)
 - Form handling with CSRF protection
@@ -122,7 +122,7 @@ acton-htmx reuses **60-70% of production infrastructure** from the Acton ecosyst
 
 ### User Guides
 
-- **[Getting Started](docs/guides/00-getting-started.md)** - Your first acton-htmx application
+- **[Getting Started](docs/guides/00-getting-started.md)** - Your first acton-dx application
 - **[HTMX Responses](docs/guides/01-htmx-responses.md)** - Complete guide to HTMX response types
 - **[Templates](docs/guides/02-templates.md)** - Askama integration and patterns
 - **[Authentication](docs/guides/03-authentication.md)** - Sessions, passwords, and security
@@ -135,7 +135,7 @@ acton-htmx reuses **60-70% of production infrastructure** from the Acton ecosyst
 
 ### Architecture
 
-- [Vision Document](./acton-htmx-vision.md) - Project goals and philosophy
+- [Vision Document](./acton-dx-vision.md) - Project goals and philosophy
 - [Architecture Overview](./.claude/architecture-overview.md) - System design
 - [Implementation Plan](./.claude/phase-1-implementation-plan.md) - Development roadmap
 - [Technical Decisions](./.claude/technical-decisions.md) - ADR log
@@ -220,10 +220,10 @@ my-app/
 - ✅ Rate limiting integration
 
 **Week 11: CLI**
-- ✅ `acton-htmx new` - Project scaffolding
-- ✅ `acton-htmx dev` - Development server
-- ✅ `acton-htmx db:migrate` - Database migrations
-- ✅ `acton-htmx db:reset` - Database reset
+- ✅ `acton-dx new` - Project scaffolding
+- ✅ `acton-dx dev` - Development server
+- ✅ `acton-dx db:migrate` - Database migrations
+- ✅ `acton-dx db:reset` - Database reset
 - ✅ Complete template generation (22 files)
 
 **Week 12: Documentation**
@@ -235,7 +235,7 @@ my-app/
 ### Phase 2 Preview
 
 After Phase 1, Phase 2 will add:
-- CRUD scaffold generator (`acton-htmx scaffold crud`)
+- CRUD scaffold generator (`acton-dx scaffold crud`)
 - Background job scheduling
 - File upload handling
 - Email sending (transactional)
@@ -245,7 +245,7 @@ After Phase 1, Phase 2 will add:
 
 ## Comparison to Other Frameworks
 
-| Feature | acton-htmx | Loco | Axum | Rails |
+| Feature | acton-dx | Loco | Axum | Rails |
 |---------|-----------|------|------|-------|
 | **Time to First App** | < 5 min | 10 min | 60 min | 10 min |
 | **HTMX Integration** | First-class | Supported | Manual | Manual |
@@ -272,8 +272,8 @@ We welcome contributions! See [Development Workflow](./.claude/development-workf
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/acton-htmx
-cd acton-htmx
+git clone https://github.com/yourusername/acton-dx
+cd acton-dx
 
 # Build workspace
 cargo build
@@ -290,7 +290,7 @@ cargo doc --no-deps --open
 
 ## Performance
 
-acton-htmx is built on Axum and inherits its excellent performance:
+acton-dx is built on Axum and inherits its excellent performance:
 
 - **< 5 microseconds** framework overhead
 - **Zero-copy** template rendering with Askama
@@ -327,7 +327,7 @@ Built on:
 
 ## Community
 
-- **GitHub**: [acton-htmx repository](https://github.com/yourusername/acton-htmx)
+- **GitHub**: [acton-dx repository](https://github.com/yourusername/acton-dx)
 - **Issues**: Report bugs and request features
 - **Discussions**: Ask questions and share ideas
 

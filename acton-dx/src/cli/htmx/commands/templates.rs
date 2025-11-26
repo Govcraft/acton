@@ -49,7 +49,7 @@ const TEMPLATE_NAMES: &[&str] = &[
 
 /// GitHub base URL for framework templates
 const GITHUB_RAW_BASE: &str =
-    "https://raw.githubusercontent.com/Govcraft/acton-htmx/main/acton-htmx/src/template/framework/defaults";
+    "https://raw.githubusercontent.com/Govcraft/acton-dx/main/acton-dx/src/template/framework/defaults";
 
 /// Template management subcommands
 #[derive(Subcommand)]
@@ -113,7 +113,7 @@ fn get_config_dir() -> Result<PathBuf> {
         let home = std::env::var("HOME").context("HOME environment variable not set")?;
         PathBuf::from(home).join(".config")
     };
-    Ok(base.join("acton-htmx").join("templates").join("framework"))
+    Ok(base.join("acton-dx").join("templates").join("framework"))
 }
 
 /// Get the XDG cache directory for framework templates
@@ -124,7 +124,7 @@ fn get_cache_dir() -> Result<PathBuf> {
         let home = std::env::var("HOME").context("HOME environment variable not set")?;
         PathBuf::from(home).join(".cache")
     };
-    Ok(base.join("acton-htmx").join("templates").join("framework"))
+    Ok(base.join("acton-dx").join("templates").join("framework"))
 }
 
 /// Initialize framework templates by downloading defaults
@@ -478,7 +478,7 @@ mod tests {
         let dir = get_config_dir();
         assert!(dir.is_ok());
         let path = dir.unwrap();
-        assert!(path.to_string_lossy().contains("acton-htmx"));
+        assert!(path.to_string_lossy().contains("acton-dx"));
         assert!(path.to_string_lossy().contains("framework"));
     }
 
@@ -487,7 +487,7 @@ mod tests {
         let dir = get_cache_dir();
         assert!(dir.is_ok());
         let path = dir.unwrap();
-        assert!(path.to_string_lossy().contains("acton-htmx"));
+        assert!(path.to_string_lossy().contains("acton-dx"));
     }
 
     #[test]

@@ -35,9 +35,9 @@ pub enum FrameworkTemplateError {
         - {config_dir}\n\
         - {cache_dir}\n\n\
         To initialize templates, run:\n\
-        \x1b[1m  acton-htmx templates init\x1b[0m\n\n\
+        \x1b[1m  acton-dx htmx templates init\x1b[0m\n\n\
         Or download manually from:\n\
-        \x1b[4mhttps://github.com/Govcraft/acton-htmx/tree/main/templates/framework\x1b[0m"
+        \x1b[4mhttps://github.com/Govcraft/acton-dx/tree/main/templates/framework\x1b[0m"
     )]
     TemplatesNotInitialized {
         /// Config directory path
@@ -62,7 +62,7 @@ impl FrameworkTemplates {
     /// Create a new framework templates instance
     ///
     /// Loads templates from XDG directories. Templates MUST exist on disk
-    /// (either in config or cache directory). Run `acton-htmx templates init`
+    /// (either in config or cache directory). Run `acton-dx htmx templates init`
     /// to download them.
     ///
     /// # Errors
@@ -99,11 +99,11 @@ impl FrameworkTemplates {
         if !config_exists && !cache_exists {
             return Err(FrameworkTemplateError::TemplatesNotInitialized {
                 config_dir: config_dir.map_or_else(
-                    || "~/.config/acton-htmx/templates/framework".to_string(),
+                    || "~/.config/acton-dx/templates/framework".to_string(),
                     |p| p.display().to_string(),
                 ),
                 cache_dir: cache_dir.map_or_else(
-                    || "~/.cache/acton-htmx/templates/framework".to_string(),
+                    || "~/.cache/acton-dx/templates/framework".to_string(),
                     |p| p.display().to_string(),
                 ),
             });
@@ -114,8 +114,8 @@ impl FrameworkTemplates {
 
     /// Get the XDG config directory for framework templates
     ///
-    /// Returns `$XDG_CONFIG_HOME/acton-htmx/templates/framework/` or
-    /// `~/.config/acton-htmx/templates/framework/` if not set.
+    /// Returns `$XDG_CONFIG_HOME/acton-dx/templates/framework/` or
+    /// `~/.config/acton-dx/templates/framework/` if not set.
     #[must_use]
     pub fn get_config_dir() -> Option<PathBuf> {
         let base = if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
@@ -123,13 +123,13 @@ impl FrameworkTemplates {
         } else {
             dirs::home_dir()?.join(".config")
         };
-        Some(base.join("acton-htmx").join("templates").join("framework"))
+        Some(base.join("acton-dx").join("templates").join("framework"))
     }
 
     /// Get the XDG cache directory for framework templates
     ///
-    /// Returns `$XDG_CACHE_HOME/acton-htmx/templates/framework/` or
-    /// `~/.cache/acton-htmx/templates/framework/` if not set.
+    /// Returns `$XDG_CACHE_HOME/acton-dx/templates/framework/` or
+    /// `~/.cache/acton-dx/templates/framework/` if not set.
     #[must_use]
     pub fn get_cache_dir() -> Option<PathBuf> {
         let base = if let Ok(xdg) = std::env::var("XDG_CACHE_HOME") {
@@ -137,7 +137,7 @@ impl FrameworkTemplates {
         } else {
             dirs::home_dir()?.join(".cache")
         };
-        Some(base.join("acton-htmx").join("templates").join("framework"))
+        Some(base.join("acton-dx").join("templates").join("framework"))
     }
 
     /// Create a new minijinja environment with all templates loaded
@@ -317,7 +317,7 @@ mod tests {
         let dir = FrameworkTemplates::get_config_dir();
         assert!(dir.is_some());
         let path = dir.unwrap();
-        assert!(path.to_string_lossy().contains("acton-htmx"));
+        assert!(path.to_string_lossy().contains("acton-dx"));
         assert!(path.to_string_lossy().contains("templates"));
         assert!(path.to_string_lossy().contains("framework"));
     }
@@ -327,7 +327,7 @@ mod tests {
         let dir = FrameworkTemplates::get_cache_dir();
         assert!(dir.is_some());
         let path = dir.unwrap();
-        assert!(path.to_string_lossy().contains("acton-htmx"));
+        assert!(path.to_string_lossy().contains("acton-dx"));
     }
 
     #[test]

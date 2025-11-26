@@ -13,9 +13,9 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```rust
-/// use acton_htmx::template::manager::TemplateConfig;
+/// use acton_dx::template::manager::TemplateConfig;
 ///
-/// // Use default configuration (official acton-htmx templates)
+/// // Use default configuration (official acton-dx templates)
 /// let config = TemplateConfig::default();
 ///
 /// // Or point to a custom fork
@@ -27,7 +27,7 @@ use serde::{Deserialize, Serialize};
 pub struct TemplateConfig {
     /// Base URL for raw GitHub content
     ///
-    /// Default: `https://raw.githubusercontent.com/Govcraft/acton-htmx`
+    /// Default: `https://raw.githubusercontent.com/Govcraft/acton-dx`
     pub github_repo: String,
 
     /// Branch to download templates from
@@ -65,7 +65,7 @@ impl TemplateConfig {
     /// # Examples
     ///
     /// ```rust
-    /// use acton_htmx::template::manager::TemplateConfig;
+    /// use acton_dx::template::manager::TemplateConfig;
     ///
     /// let config = TemplateConfig::new()
     ///     .with_github_repo("https://raw.githubusercontent.com/myorg/my-templates");
@@ -85,7 +85,7 @@ impl TemplateConfig {
     /// # Examples
     ///
     /// ```rust
-    /// use acton_htmx::template::manager::TemplateConfig;
+    /// use acton_dx::template::manager::TemplateConfig;
     ///
     /// let config = TemplateConfig::new()
     ///     .with_github_branch("develop");
@@ -128,7 +128,7 @@ impl TemplateConfig {
     /// # Examples
     ///
     /// ```rust
-    /// use acton_htmx::template::manager::TemplateConfig;
+    /// use acton_dx::template::manager::TemplateConfig;
     ///
     /// let config = TemplateConfig::default();
     /// let url = config.template_url("project", "common/Cargo.toml.jinja");
@@ -146,7 +146,7 @@ impl TemplateConfig {
 impl Default for TemplateConfig {
     fn default() -> Self {
         Self {
-            github_repo: "https://raw.githubusercontent.com/Govcraft/acton-htmx".to_string(),
+            github_repo: "https://raw.githubusercontent.com/Govcraft/acton-dx".to_string(),
             github_branch: "main".to_string(),
             cache_enabled: true,
             auto_download: true,
@@ -161,7 +161,7 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = TemplateConfig::default();
-        assert!(config.github_repo.contains("Govcraft/acton-htmx"));
+        assert!(config.github_repo.contains("Govcraft/acton-dx"));
         assert_eq!(config.github_branch, "main");
         assert!(config.cache_enabled);
         assert!(config.auto_download);
@@ -186,7 +186,7 @@ mod tests {
         let url = config.template_url("project", "common/main.rs.jinja");
         assert_eq!(
             url,
-            "https://raw.githubusercontent.com/Govcraft/acton-htmx/main/templates/project/common/main.rs.jinja"
+            "https://raw.githubusercontent.com/Govcraft/acton-dx/main/templates/project/common/main.rs.jinja"
         );
     }
 

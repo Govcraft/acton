@@ -1,10 +1,10 @@
-# acton-htmx Documentation
+# acton-dx Documentation
 
-Welcome to the acton-htmx documentation! This guide will help you build production-ready HTMX applications in Rust.
+Welcome to the acton-dx documentation! This guide will help you build production-ready HTMX applications in Rust.
 
 ## Quick Links
 
-- **[Getting Started →](guides/00-getting-started.md)** - Your first acton-htmx application
+- **[Getting Started →](guides/00-getting-started.md)** - Your first acton-dx application
 - **[Complete Example →](examples/blog-crud.md)** - Blog with full CRUD operations
 - **[API Documentation →](../target/doc/acton_htmx/index.html)** - Generated API docs (run `cargo doc --open`)
 
@@ -12,7 +12,7 @@ Welcome to the acton-htmx documentation! This guide will help you build producti
 
 ### For Beginners
 
-Start here if you're new to acton-htmx:
+Start here if you're new to acton-dx:
 
 1. **[Getting Started](guides/00-getting-started.md)** - Install CLI, create first project
 2. **[HTMX Responses](guides/01-htmx-responses.md)** - Learn HTMX response types
@@ -79,7 +79,7 @@ Each guide contains numerous code examples:
 
 For deeper understanding of the framework:
 
-- **[Vision](../acton-htmx-vision.md)** - Project goals and philosophy
+- **[Vision](../acton-dx-vision.md)** - Project goals and philosophy
 - **[Architecture Overview](../.claude/architecture-overview.md)** - System design
 - **[Implementation Plan](../.claude/phase-1-implementation-plan.md)** - Development roadmap
 - **[Technical Decisions](../.claude/technical-decisions.md)** - ADR log
@@ -105,17 +105,17 @@ This will open the full rustdoc documentation in your browser, including:
 
 ```bash
 # Project creation
-acton-htmx new myapp
+acton-dx new myapp
 
 # Development
-acton-htmx dev                    # Start dev server
+acton-dx dev                    # Start dev server
 cargo check                       # Quick type check
 cargo test                        # Run tests
 
 # Database
-acton-htmx db migrate             # Run migrations
-acton-htmx db reset               # Reset database
-acton-htmx db create <name>       # Create migration
+acton-dx db migrate             # Run migrations
+acton-dx db reset               # Reset database
+acton-dx db create <name>       # Create migration
 
 # Building
 cargo build --release             # Production build
@@ -153,7 +153,7 @@ See [complete guide](guides/01-htmx-responses.md) for all response types.
 
 If you find errors or gaps in the documentation:
 1. Check the [examples](examples/) for working code
-2. Search [GitHub issues](https://github.com/yourusername/acton-htmx/issues)
+2. Search [GitHub issues](https://github.com/yourusername/acton-dx/issues)
 3. Open a new issue with the "documentation" label
 
 ### Feature Questions
@@ -161,7 +161,7 @@ If you find errors or gaps in the documentation:
 For questions about using specific features:
 1. Check the relevant guide
 2. Look at the [blog example](examples/blog-crud.md)
-3. Ask in [GitHub Discussions](https://github.com/yourusername/acton-htmx/discussions)
+3. Ask in [GitHub Discussions](https://github.com/yourusername/acton-dx/discussions)
 
 ### Contributing
 
@@ -183,16 +183,16 @@ See [Development Workflow](../.claude/development-workflow.md) for contribution 
 
 ### Learn More
 
-- Join our [community discussions](https://github.com/yourusername/acton-htmx/discussions)
-- Read the [vision document](../acton-htmx-vision.md)
+- Join our [community discussions](https://github.com/yourusername/acton-dx/discussions)
+- Read the [vision document](../acton-dx-vision.md)
 - Explore the [architecture](../.claude/architecture-overview.md)
 
 ### Stay Updated
 
-- Watch the [GitHub repository](https://github.com/yourusername/acton-htmx)
-- Follow [release notes](https://github.com/yourusername/acton-htmx/releases)
+- Watch the [GitHub repository](https://github.com/yourusername/acton-dx)
+- Follow [release notes](https://github.com/yourusername/acton-dx/releases)
 - Check the [roadmap](../.claude/phase-1-implementation-plan.md) for upcoming features
 
 ---
 
-**Ready to start?** [Install acton-htmx and create your first app →](guides/00-getting-started.md)
+**Ready to start?** [Install acton-dx and create your first app →](guides/00-getting-started.md)

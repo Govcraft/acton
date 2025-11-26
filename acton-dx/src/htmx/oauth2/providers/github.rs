@@ -61,7 +61,7 @@ impl GitHubProvider {
             .fetch_json_with_headers(
                 "https://api.github.com/user",
                 access_token,
-                Some(&[("User-Agent", "acton-htmx")]),
+                Some(&[("User-Agent", "acton-dx")]),
             )
             .await?;
 
@@ -73,7 +73,7 @@ impl GitHubProvider {
             .fetch_json_with_headers(
                 "https://api.github.com/user/emails",
                 access_token,
-                Some(&[("User-Agent", "acton-htmx")]),
+                Some(&[("User-Agent", "acton-dx")]),
             )
             .await;
 

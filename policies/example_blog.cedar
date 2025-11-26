@@ -1,6 +1,6 @@
 // Example Cedar policies for a blog application with HTMX
 //
-// This file demonstrates Cedar policy-based authorization patterns for acton-htmx.
+// This file demonstrates Cedar policy-based authorization patterns for acton-dx.
 // Cedar provides declarative, human-readable authorization with support for:
 // - Role-based access control (RBAC)
 // - Attribute-based access control (ABAC)

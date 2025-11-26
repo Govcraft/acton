@@ -15,7 +15,7 @@ use std::sync::Arc;
 #[cfg(feature = "redis")]
 use deadpool_redis::Pool as RedisPool;
 
-/// Application state for acton-htmx applications
+/// Application state for acton-dx applications
 ///
 /// Combines:
 /// - Configuration (from acton-service)
@@ -170,7 +170,7 @@ impl ActonHtmxState {
         runtime: &mut AgentRuntime,
         config: ActonHtmxConfig,
     ) -> anyhow::Result<Self> {
-        let observability = ObservabilityConfig::new("acton-htmx");
+        let observability = ObservabilityConfig::new("acton-dx");
         let session_manager = SessionManagerAgent::spawn(runtime).await?;
         let csrf_manager = CsrfManagerAgent::spawn(runtime).await?;
         let oauth2_manager = OAuth2Agent::spawn(runtime).await?;
@@ -216,7 +216,7 @@ impl ActonHtmxState {
     /// Get framework templates
     ///
     /// Returns the XDG-compliant template loader for rendering framework HTML.
-    /// Templates can be customized by placing files in `~/.config/acton-htmx/templates/framework/`.
+    /// Templates can be customized by placing files in `~/.config/acton-dx/templates/framework/`.
     ///
     /// # Example
     ///

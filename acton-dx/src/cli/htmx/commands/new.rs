@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use super::super::{DatabaseBackend, ProjectTemplateManager};
 
-/// Create a new acton-htmx project
+/// Create a new acton-dx project
 pub struct NewCommand {
     name: String,
     output_dir: PathBuf,

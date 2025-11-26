@@ -1,4 +1,4 @@
-// Simple Cedar policies for acton-htmx
+// Simple Cedar policies for acton-dx
 //
 // This is a minimal example to get started with Cedar authorization.
 // For a complete example with more patterns, see example_blog.cedar

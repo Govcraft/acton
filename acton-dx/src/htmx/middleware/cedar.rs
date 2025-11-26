@@ -1,6 +1,6 @@
-//! Cedar authorization middleware for acton-htmx
+//! Cedar authorization middleware for acton-dx
 //!
-//! This middleware integrates AWS Cedar policy-based authorization into acton-htmx.
+//! This middleware integrates AWS Cedar policy-based authorization into acton-dx.
 //! It validates authorization requests against Cedar policies after session authentication.
 //!
 //! # Key Differences from acton-service

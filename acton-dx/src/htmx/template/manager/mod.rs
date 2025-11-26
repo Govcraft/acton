@@ -1,15 +1,15 @@
 //! Template management system with XDG-compliant storage
 //!
 //! This module provides a unified template management system for:
-//! - **Project templates**: Used by `acton-htmx new` for scaffolding new projects
-//! - **Scaffold templates**: Used by `acton-htmx scaffold` for CRUD generation
+//! - **Project templates**: Used by `acton-dx new` for scaffolding new projects
+//! - **Scaffold templates**: Used by `acton-dx scaffold` for CRUD generation
 //! - **Framework templates**: Runtime templates for forms, flash messages, error pages
 //!
 //! # XDG Directory Structure
 //!
 //! Templates follow the XDG Base Directory Specification:
-//! - **Config** (`$XDG_CONFIG_HOME/acton-htmx/templates/{category}/`): User customizations
-//! - **Cache** (`$XDG_CACHE_HOME/acton-htmx/templates/{category}/`): Downloaded defaults
+//! - **Config** (`$XDG_CONFIG_HOME/acton-dx/templates/{category}/`): User customizations
+//! - **Cache** (`$XDG_CACHE_HOME/acton-dx/templates/{category}/`): Downloaded defaults
 //!
 //! Resolution order: config (customizations) > cache (downloaded defaults)
 //!

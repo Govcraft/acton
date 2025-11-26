@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use super::DatabaseBackend;
 
 /// GitHub raw content base URL for project templates
-const GITHUB_RAW_BASE: &str = "https://raw.githubusercontent.com/Govcraft/acton-htmx/main/templates/project";
+const GITHUB_RAW_BASE: &str = "https://raw.githubusercontent.com/Govcraft/acton-dx/main/templates/project";
 
 /// Common template files shared between SQLite and PostgreSQL
 const COMMON_TEMPLATES: &[&str] = &[
@@ -178,7 +178,7 @@ impl ProjectTemplateManager {
             let home = std::env::var("HOME").context("HOME not set")?;
             PathBuf::from(home).join(".config")
         };
-        Ok(base.join("acton-htmx").join("templates").join("project"))
+        Ok(base.join("acton-dx").join("templates").join("project"))
     }
 
     /// Get XDG cache directory for downloaded templates
@@ -189,7 +189,7 @@ impl ProjectTemplateManager {
             let home = std::env::var("HOME").context("HOME not set")?;
             PathBuf::from(home).join(".cache")
         };
-        Ok(base.join("acton-htmx").join("templates").join("project"))
+        Ok(base.join("acton-dx").join("templates").join("project"))
     }
 
     /// Ensure all templates for the given database backend are available
@@ -432,14 +432,14 @@ mod tests {
     fn test_config_dir_uses_xdg() {
         std::env::set_var("XDG_CONFIG_HOME", "/tmp/test-xdg-config");
         let dir = ProjectTemplateManager::get_config_dir().unwrap();
-        assert_eq!(dir, PathBuf::from("/tmp/test-xdg-config/acton-htmx/templates/project"));
+        assert_eq!(dir, PathBuf::from("/tmp/test-xdg-config/acton-dx/templates/project"));
     }
 
     #[test]
     fn test_cache_dir_uses_xdg() {
         std::env::set_var("XDG_CACHE_HOME", "/tmp/test-xdg-cache");
         let dir = ProjectTemplateManager::get_cache_dir().unwrap();
-        assert_eq!(dir, PathBuf::from("/tmp/test-xdg-cache/acton-htmx/templates/project"));
+        assert_eq!(dir, PathBuf::from("/tmp/test-xdg-cache/acton-dx/templates/project"));
     }
 
     #[test]

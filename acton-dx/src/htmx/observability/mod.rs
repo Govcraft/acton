@@ -77,7 +77,7 @@ pub struct ObservabilityConfig {
 impl Default for ObservabilityConfig {
     fn default() -> Self {
         Self {
-            service_name: "acton-htmx".to_string(),
+            service_name: "acton-dx".to_string(),
             metrics_enabled: false,
             tracing_enabled: false,
         }
@@ -115,7 +115,7 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = ObservabilityConfig::default();
-        assert_eq!(config.service_name, "acton-htmx");
+        assert_eq!(config.service_name, "acton-dx");
         assert!(!config.metrics_enabled);
         assert!(!config.tracing_enabled);
     }

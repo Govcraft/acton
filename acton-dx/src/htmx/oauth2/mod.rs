@@ -1,6 +1,6 @@
 //! OAuth2 authentication module
 //!
-//! This module provides OAuth2 authentication support for acton-htmx applications,
+//! This module provides OAuth2 authentication support for acton-dx applications,
 //! including:
 //! - Google OAuth2 (with OpenID Connect)
 //! - GitHub OAuth2

@@ -1,6 +1,6 @@
 //! Email System Demo
 //!
-//! Demonstrates the acton-htmx email system with multiple backends and templates.
+//! Demonstrates the acton-dx email system with multiple backends and templates.
 //!
 //! Run with: `cargo run --example email_demo`
 
@@ -167,7 +167,7 @@ impl acton::htmx::email::SimpleEmailTemplate for PasswordResetHtml {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("╔═══════════════════════════════════════════════════════════════╗");
-    println!("║            acton-htmx Email System Demo                       ║");
+    println!("║            acton-dx Email System Demo                       ║");
     println!("╚═══════════════════════════════════════════════════════════════╝\n");
 
     // Create a console backend for development (prints emails instead of sending)
@@ -181,7 +181,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let simple_email = Email::new()
         .to("user@example.com")
         .from("noreply@myapp.com")
-        .subject("Hello from acton-htmx!")
+        .subject("Hello from acton-dx!")
         .text("This is a simple plain text email.")
         .html("<h1>Hello!</h1><p>This is a simple HTML email.</p>");
 

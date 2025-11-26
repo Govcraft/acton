@@ -4,8 +4,8 @@
 //! (forms, flash messages, validation errors, error pages, etc.).
 //!
 //! Templates are resolved in order:
-//! 1. User customizations in `$XDG_CONFIG_HOME/acton-htmx/templates/framework/`
-//! 2. Cached defaults in `$XDG_CACHE_HOME/acton-htmx/templates/framework/`
+//! 1. User customizations in `$XDG_CONFIG_HOME/acton-dx/templates/framework/`
+//! 2. Cached defaults in `$XDG_CACHE_HOME/acton-dx/templates/framework/`
 //! 3. Embedded fallbacks compiled into the binary
 //!
 //! # Example

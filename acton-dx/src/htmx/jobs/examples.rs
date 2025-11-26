@@ -1,7 +1,7 @@
 //! Example background jobs demonstrating common use cases
 //!
 //! This module provides production-ready example jobs that demonstrate best practices
-//! for using the acton-htmx job system. Each example shows proper integration with
+//! for using the acton-dx job system. Each example shows proper integration with
 //! framework services (email, database, file storage) via the [`JobContext`].
 
 use crate::htmx::email::Email;

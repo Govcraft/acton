@@ -1,7 +1,7 @@
 //! Template-based form rendering
 //!
 //! Renders forms using minijinja templates from the XDG template directory.
-//! Templates must be initialized via `acton-htmx templates init` before use.
+//! Templates must be initialized via `acton-dx templates init` before use.
 
 use minijinja::Value;
 use serde::Serialize;
@@ -513,7 +513,7 @@ mod tests {
     use super::*;
 
     // Note: Tests require templates to be initialized
-    // Run `acton-htmx templates init` before running tests
+    // Run `acton-dx templates init` before running tests
 
     #[test]
     fn test_template_renderer_creation() {

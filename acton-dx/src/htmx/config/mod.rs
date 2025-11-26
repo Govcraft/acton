@@ -1,12 +1,12 @@
-//! Configuration management for acton-htmx
+//! Configuration management for acton-dx
 //!
 //! Extends acton-service's XDG-compliant configuration system with HTMX-specific
 //! settings. Configuration is loaded from multiple sources with clear precedence:
 //!
 //! 1. Environment variables (highest priority, `ACTON_` prefix, `__` for nesting)
 //! 2. `./config.toml` (development)
-//! 3. `~/.config/acton-htmx/config.toml` (user config, XDG)
-//! 4. `/etc/acton-htmx/config.toml` (system config)
+//! 3. `~/.config/acton-dx/config.toml` (user config, XDG)
+//! 4. `/etc/acton-dx/config.toml` (system config)
 //! 5. Hardcoded defaults (fallback)
 //!
 //! Environment variable format: `ACTON_SECTION__FIELD_NAME`
@@ -356,7 +356,7 @@ impl CedarConfig {
     }
 }
 
-/// Complete acton-htmx configuration
+/// Complete acton-dx configuration
 ///
 /// Combines framework configuration with HTMX-specific settings.
 /// Uses `#[serde(flatten)]` to merge all fields into a single `config.toml`.
@@ -394,8 +394,8 @@ impl ActonHtmxConfig {
     /// Searches for configuration in XDG-compliant locations with precedence:
     /// 1. Environment variables (`ACTON_*`, use `__` for nesting)
     /// 2. `./config.toml`
-    /// 3. `~/.config/acton-htmx/{service_name}/config.toml`
-    /// 4. `/etc/acton-htmx/{service_name}/config.toml`
+    /// 3. `~/.config/acton-dx/{service_name}/config.toml`
+    /// 4. `/etc/acton-dx/{service_name}/config.toml`
     /// 5. Defaults
     ///
     /// # Errors
@@ -421,15 +421,15 @@ impl ActonHtmxConfig {
             // 5. Start with defaults (lowest priority)
             .merge(Toml::string(&toml::to_string(&Self::default())?));
 
-        // 4. System config: /etc/acton-htmx/{service_name}/config.toml
-        let system_config = PathBuf::from("/etc/acton-htmx")
+        // 4. System config: /etc/acton-dx/{service_name}/config.toml
+        let system_config = PathBuf::from("/etc/acton-dx")
             .join(service_name)
             .join("config.toml");
         if system_config.exists() {
             figment = figment.merge(Toml::file(&system_config));
         }
 
-        // 3. User config: ~/.config/acton-htmx/{service_name}/config.toml
+        // 3. User config: ~/.config/acton-dx/{service_name}/config.toml
         let user_config = Self::recommended_path(service_name);
         if user_config.exists() {
             figment = figment.merge(Toml::file(&user_config));
@@ -490,7 +490,7 @@ impl ActonHtmxConfig {
     /// use acton_htmx::config::ActonHtmxConfig;
     ///
     /// let path = ActonHtmxConfig::recommended_path("my-app");
-    /// // Returns: ~/.config/acton-htmx/my-app/config.toml
+    /// // Returns: ~/.config/acton-dx/my-app/config.toml
     /// ```
     #[must_use]
     pub fn recommended_path(service_name: &str) -> PathBuf {
@@ -498,7 +498,7 @@ impl ActonHtmxConfig {
             || PathBuf::from("./config.toml"),
             |config_dir| {
                 config_dir
-                    .join("acton-htmx")
+                    .join("acton-dx")
                     .join(service_name)
                     .join("config.toml")
             },
@@ -579,8 +579,8 @@ mod tests {
         // Should end with config.toml
         assert!(path.to_str().unwrap().ends_with("config.toml"));
 
-        // Should contain acton-htmx in the path
-        assert!(path.to_str().unwrap().contains("acton-htmx"));
+        // Should contain acton-dx in the path
+        assert!(path.to_str().unwrap().contains("acton-dx"));
     }
 
     #[test]

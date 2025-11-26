@@ -1,8 +1,8 @@
 //! XDG Base Directory Specification support
 //!
 //! Provides paths for template storage following the XDG specification:
-//! - Config: `$XDG_CONFIG_HOME/acton-htmx/templates/{category}/` (user customizations)
-//! - Cache: `$XDG_CACHE_HOME/acton-htmx/templates/{category}/` (downloaded defaults)
+//! - Config: `$XDG_CONFIG_HOME/acton-dx/templates/{category}/` (user customizations)
+//! - Cache: `$XDG_CACHE_HOME/acton-dx/templates/{category}/` (downloaded defaults)
 
 use std::path::PathBuf;
 use thiserror::Error;
@@ -50,7 +50,7 @@ impl XdgPaths {
     /// # Examples
     ///
     /// ```rust
-    /// use acton_htmx::template::manager::XdgPaths;
+    /// use acton_dx::template::manager::XdgPaths;
     ///
     /// let paths = XdgPaths::new("project").unwrap();
     /// println!("Config: {:?}", paths.config_dir());
@@ -157,7 +157,7 @@ impl XdgPaths {
                 .join(".config")
         };
 
-        Ok(base.join("acton-htmx").join("templates").join(category))
+        Ok(base.join("acton-dx").join("templates").join(category))
     }
 
     /// Resolve XDG cache base directory
@@ -170,7 +170,7 @@ impl XdgPaths {
                 .join(".cache")
         };
 
-        Ok(base.join("acton-htmx").join("templates").join(category))
+        Ok(base.join("acton-dx").join("templates").join(category))
     }
 }
 
@@ -185,7 +185,7 @@ mod tests {
         let paths = XdgPaths::new("project").unwrap();
         assert_eq!(
             paths.config_dir(),
-            &PathBuf::from("/tmp/test-xdg-config/acton-htmx/templates/project")
+            &PathBuf::from("/tmp/test-xdg-config/acton-dx/templates/project")
         );
         env::remove_var("XDG_CONFIG_HOME");
     }
@@ -196,7 +196,7 @@ mod tests {
         let paths = XdgPaths::new("scaffold").unwrap();
         assert_eq!(
             paths.cache_dir(),
-            &PathBuf::from("/tmp/test-xdg-cache/acton-htmx/templates/scaffold")
+            &PathBuf::from("/tmp/test-xdg-cache/acton-dx/templates/scaffold")
         );
         env::remove_var("XDG_CACHE_HOME");
     }
@@ -208,7 +208,7 @@ mod tests {
         let template_path = paths.config_path("forms/input.html");
         assert_eq!(
             template_path,
-            PathBuf::from("/tmp/test-config/acton-htmx/templates/framework/forms/input.html")
+            PathBuf::from("/tmp/test-config/acton-dx/templates/framework/forms/input.html")
         );
         env::remove_var("XDG_CONFIG_HOME");
     }
@@ -220,7 +220,7 @@ mod tests {
         let template_path = paths.cache_path("common/Cargo.toml.jinja");
         assert_eq!(
             template_path,
-            PathBuf::from("/tmp/test-cache/acton-htmx/templates/project/common/Cargo.toml.jinja")
+            PathBuf::from("/tmp/test-cache/acton-dx/templates/project/common/Cargo.toml.jinja")
         );
         env::remove_var("XDG_CACHE_HOME");
     }

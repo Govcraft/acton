@@ -1,4 +1,4 @@
-//! HTTP handlers for acton-htmx
+//! HTTP handlers for acton-dx
 //!
 //! This module contains HTTP request handlers for various features:
 //! - Cedar policy administration (admin-only endpoints)

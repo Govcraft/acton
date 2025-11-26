@@ -1,4 +1,4 @@
-//! Testing utilities for acton-htmx applications
+//! Testing utilities for acton-dx applications
 //!
 //! This module provides comprehensive test helpers for testing HTMX applications:
 //!

@@ -1,6 +1,6 @@
 //! HTMX + Templates Integration Example
 //!
-//! This example demonstrates the acton-htmx workflow:
+//! This example demonstrates the acton-dx workflow:
 //! - HxTemplate trait for automatic partial detection
 //! - HxSwapOob for multi-target updates
 //! - Template helpers

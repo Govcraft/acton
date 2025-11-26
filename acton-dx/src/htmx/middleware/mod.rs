@@ -1,4 +1,4 @@
-//! Middleware layers for acton-htmx
+//! Middleware layers for acton-dx
 //!
 //! Provides middleware for:
 //! - Session management (cookie-based sessions with agent backend)

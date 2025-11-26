@@ -1,4 +1,4 @@
-//! Agent testing utilities for acton-htmx
+//! Agent testing utilities for acton-dx
 //!
 //! This module provides test fixtures and helpers for testing acton-reactive agents
 //! with reduced boilerplate. The [`AgentTestRuntime`] wrapper provides automatic

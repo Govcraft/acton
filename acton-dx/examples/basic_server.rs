@@ -1,4 +1,4 @@
-//! Basic acton-htmx server example
+//! Basic acton-dx server example
 //!
 //! Demonstrates:
 //! - Configuration loading
@@ -18,7 +18,7 @@ async fn main() -> anyhow::Result<()> {
     // Initialize observability (logging, tracing)
     observability::init()?;
 
-    tracing::info!("Starting acton-htmx basic server");
+    tracing::info!("Starting acton-dx basic server");
 
     // Launch the Acton runtime - keep ownership in main for shutdown orchestration
     let mut runtime = ActonApp::launch();
@@ -62,7 +62,7 @@ async fn index(State(state): State<ActonHtmxState>, HxRequest(is_htmx): HxReques
     if is_htmx {
         // Return partial for HTMX requests
         "<div id=\"content\">
-    <h1>Welcome to acton-htmx!</h1>
+    <h1>Welcome to acton-dx!</h1>
     <p>This is a partial response (HTMX request detected).</p>
     <a href=\"/about\" hx-get=\"/about\" hx-target=\"#content\">About</a>
 </div>"
@@ -71,12 +71,12 @@ async fn index(State(state): State<ActonHtmxState>, HxRequest(is_htmx): HxReques
         "<!DOCTYPE html>
 <html>
 <head>
-    <title>acton-htmx Example</title>
+    <title>acton-dx Example</title>
     <script src=\"https://unpkg.com/htmx.org@1.9.10\"></script>
 </head>
 <body>
     <div id=\"content\">
-        <h1>Welcome to acton-htmx!</h1>
+        <h1>Welcome to acton-dx!</h1>
         <p>This is a full page response.</p>
         <a href=\"/about\" hx-get=\"/about\" hx-target=\"#content\">About</a>
     </div>
@@ -91,7 +91,7 @@ async fn about(HxRequest(is_htmx): HxRequest) -> &'static str {
 
     if is_htmx {
         "<div id=\"content\">
-    <h1>About acton-htmx</h1>
+    <h1>About acton-dx</h1>
     <p>A production-grade Rust web framework for HTMX applications.</p>
     <a href=\"/\" hx-get=\"/\" hx-target=\"#content\">Home</a>
 </div>"
@@ -99,12 +99,12 @@ async fn about(HxRequest(is_htmx): HxRequest) -> &'static str {
         "<!DOCTYPE html>
 <html>
 <head>
-    <title>About - acton-htmx</title>
+    <title>About - acton-dx</title>
     <script src=\"https://unpkg.com/htmx.org@1.9.10\"></script>
 </head>
 <body>
     <div id=\"content\">
-        <h1>About acton-htmx</h1>
+        <h1>About acton-dx</h1>
         <p>A production-grade Rust web framework for HTMX applications.</p>
         <a href=\"/\" hx-get=\"/\" hx-target=\"#content\">Home</a>
     </div>

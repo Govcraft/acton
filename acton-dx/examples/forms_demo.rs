@@ -1,6 +1,6 @@
 //! Forms Demo Example
 //!
-//! Demonstrates the acton-htmx form builder API with HTMX integration.
+//! Demonstrates the acton-dx form builder API with HTMX integration.
 //!
 //! Run with: `cargo run --example forms_demo`
 
@@ -79,12 +79,12 @@ fn html_page(login_form: &str, register_form: &str, search_form: &str) -> String
         r##"<!DOCTYPE html>
 <html>
 <head>
-    <title>acton-htmx Forms Demo</title>
+    <title>acton-dx Forms Demo</title>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <style>{css}</style>
 </head>
 <body>
-    <h1>acton-htmx Forms Demo</h1>
+    <h1>acton-dx Forms Demo</h1>
     <nav>
         <a href="#login-section">Login Form</a>
         <a href="#register-section">Registration Form</a>

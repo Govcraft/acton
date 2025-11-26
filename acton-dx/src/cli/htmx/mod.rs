@@ -40,7 +40,7 @@ pub enum DatabaseBackend {
 /// HTMX subcommand
 #[derive(Subcommand)]
 pub enum HtmxCommand {
-    /// Create a new acton-htmx project
+    /// Create a new acton-dx project
     New {
         /// Project name
         name: String,

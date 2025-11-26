@@ -103,7 +103,7 @@ pub mod prelude {
         HxTarget,
         HxTrigger,
         HxTriggerName,
-        // acton-htmx extensions
+        // acton-dx extensions
         HxSwapOob,
         SwapStrategy,
     };

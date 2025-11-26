@@ -62,12 +62,12 @@ pub fn csrf_token() -> String {
 /// # Panics
 ///
 /// Panics if the CSRF template cannot be rendered. Ensure templates are
-/// initialized via `acton-htmx templates init` before using this function.
+/// initialized via `acton-dx templates init` before using this function.
 #[must_use]
 pub fn csrf_token_with(token: &str) -> String {
     templates()
         .render("forms/csrf-input.html", minijinja::context! { token => token })
-        .expect("Failed to render CSRF token template - run `acton-htmx templates init`")
+        .expect("Failed to render CSRF token template - run `acton-dx templates init`")
 }
 
 /// Render flash messages as HTML
@@ -118,7 +118,7 @@ pub fn csrf_token_with(token: &str) -> String {
 /// # Panics
 ///
 /// Panics if the flash messages template cannot be rendered. Ensure templates are
-/// initialized via `acton-htmx templates init` before using this function.
+/// initialized via `acton-dx templates init` before using this function.
 #[must_use]
 pub fn flash_messages(messages: &[FlashMessage]) -> String {
     if messages.is_empty() {
@@ -145,7 +145,7 @@ pub fn flash_messages(messages: &[FlashMessage]) -> String {
                 messages => msgs,
             },
         )
-        .expect("Failed to render flash messages template - run `acton-htmx templates init`")
+        .expect("Failed to render flash messages template - run `acton-dx templates init`")
 }
 
 // Note: The route() helper has been removed as named routes are not currently implemented.
@@ -418,7 +418,7 @@ pub fn escape_html(s: &str) -> String {
 /// # Panics
 ///
 /// Panics if the field errors template cannot be rendered. Ensure templates are
-/// initialized via `acton-htmx templates init` before using this function.
+/// initialized via `acton-dx templates init` before using this function.
 #[must_use]
 pub fn validation_errors_for(errors: &validator::ValidationErrors, field: &str) -> String {
     errors.field_errors().get(field).map_or_else(String::new, |field_errors| {
@@ -441,7 +441,7 @@ pub fn validation_errors_for(errors: &validator::ValidationErrors, field: &str) 
                     errors => error_messages,
                 },
             )
-            .expect("Failed to render field errors template - run `acton-htmx templates init`")
+            .expect("Failed to render field errors template - run `acton-dx templates init`")
     })
 }
 
@@ -507,7 +507,7 @@ pub fn error_class(errors: &validator::ValidationErrors, field: &str) -> &'stati
 /// # Panics
 ///
 /// Panics if the validation summary template cannot be rendered. Ensure templates are
-/// initialized via `acton-htmx templates init` before using this function.
+/// initialized via `acton-dx templates init` before using this function.
 #[must_use]
 pub fn validation_errors_list(errors: &validator::ValidationErrors) -> String {
     if errors.is_empty() {
@@ -535,7 +535,7 @@ pub fn validation_errors_list(errors: &validator::ValidationErrors) -> String {
                 errors => error_messages,
             },
         )
-        .expect("Failed to render validation summary template - run `acton-htmx templates init`")
+        .expect("Failed to render validation summary template - run `acton-dx templates init`")
 }
 
 #[cfg(test)]

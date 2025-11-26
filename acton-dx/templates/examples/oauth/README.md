@@ -1,10 +1,10 @@
 # OAuth2 Example Templates
 
-This directory contains example templates demonstrating how to integrate OAuth2 authentication into your acton-htmx application.
+This directory contains example templates demonstrating how to integrate OAuth2 authentication into your acton-dx application.
 
 ## Overview
 
-acton-htmx provides complete OAuth2 infrastructure out of the box:
+acton-dx provides complete OAuth2 infrastructure out of the box:
 - **Google OAuth2** with OpenID Connect
 - **GitHub OAuth2**
 - **Generic OIDC** provider support
@@ -205,7 +205,7 @@ For production, update redirect URIs to your domain.
 
 ## Support
 
-- Framework documentation: https://acton-htmx.dev/oauth2
+- Framework documentation: https://acton-dx.dev/oauth2
 - OAuth2 RFC: https://datatracker.ietf.org/doc/html/rfc6749
 - Google OAuth2: https://developers.google.com/identity/protocols/oauth2
 - GitHub OAuth: https://docs.github.com/en/developers/apps/building-oauth-apps
