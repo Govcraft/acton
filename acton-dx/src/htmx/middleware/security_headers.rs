@@ -197,7 +197,7 @@ impl SecurityHeadersConfig {
     /// - X-Content-Type-Options: nosniff
     /// - X-XSS-Protection: Disabled (rely on CSP)
     /// - Strict-Transport-Security: Disabled (HTTP in dev)
-    /// - Content-Security-Policy: Permissive for development
+    /// - Content-Security-Policy: Permissive for development (allows CDN scripts)
     /// - Referrer-Policy: strict-origin-when-cross-origin
     #[must_use]
     pub fn development() -> Self {
@@ -207,7 +207,9 @@ impl SecurityHeadersConfig {
             xss_protection: None, // Modern browsers use CSP
             hsts: None,           // No HTTPS in development
             csp: Some(
-                "default-src 'self' 'unsafe-inline' 'unsafe-eval'; img-src 'self' data:"
+                "default-src 'self' 'unsafe-inline' 'unsafe-eval'; \
+                 script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; \
+                 img-src 'self' data:"
                     .to_string(),
             ),
             referrer_policy: Some(ReferrerPolicy::StrictOriginWhenCrossOrigin),
