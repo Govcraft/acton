@@ -47,32 +47,20 @@ pub struct RegisterTemplate {
     pub flash_messages: Vec<FlashMessage>,
 }
 
-/// Nav partial for OOB swap after auth state changes
+/// Response template for successful login/register with OOB swaps
 #[derive(Template)]
-#[template(path = "partials/nav.html")]
-pub struct NavPartial {
+#[template(path = "partials/auth_success.html")]
+pub struct AuthSuccessTemplate {
     pub user_id: Option<i64>,
-}
-
-/// Flash messages partial for OOB swap
-#[derive(Template)]
-#[template(path = "partials/flash.html")]
-pub struct FlashPartial {
     pub flash_messages: Vec<FlashMessage>,
 }
 
-/// Home content partial for post-login/register content swap
+/// Response template for successful logout with OOB swaps
 #[derive(Template)]
-#[template(path = "partials/home_content.html")]
-pub struct HomeContentPartial {
-    pub user_id: Option<i64>,
-}
-
-/// Login form partial for post-logout content swap
-#[derive(Template)]
-#[template(path = "partials/login_content.html")]
-pub struct LoginContentPartial {
+#[template(path = "partials/logout_success.html")]
+pub struct LogoutSuccessTemplate {
     pub error: Option<String>,
+    pub flash_messages: Vec<FlashMessage>,
 }
 
 // =============================================================================
@@ -156,24 +144,13 @@ pub async fn login(
     if matches!(verify_password(&form.password, &user.password_hash), Ok(true)) {
         // Set user ID in session
         session.1.user_id = Some(user.id);
-        let flash = FlashMessage::success("Successfully logged in!");
 
-        // Return OOB swaps: main content + nav update + flash messages
-        let home = HomeContentPartial { user_id: Some(user.id) };
-        let flash_partial = FlashPartial { flash_messages: vec![flash] };
-
-        let response = format!(
-            r#"{}
-<nav id="main-nav" hx-swap-oob="true">
-    <a href="/">Home</a>
-    <span class="nav-user">Logged in</span>
-    <button hx-post="/logout" hx-target="#main-content" class="nav-logout">Logout</button>
-</nav>
-<div id="flash-messages" hx-swap-oob="true">{}</div>"#,
-            home.render().unwrap(),
-            flash_partial.render().unwrap()
-        );
-        Html(response).into_response()
+        // Return OOB response with updated nav, content, and flash
+        let template = AuthSuccessTemplate {
+            user_id: Some(user.id),
+            flash_messages: vec![FlashMessage::success("Successfully logged in!")],
+        };
+        Html(template.render().unwrap()).into_response()
     } else {
         let template = LoginTemplate {
             user_id: None,
@@ -279,24 +256,13 @@ pub async fn register(
 
             // Auto-login after registration
             session.1.user_id = Some(user_id);
-            let flash = FlashMessage::success("Account created successfully! Welcome!");
 
-            // Return OOB swaps: main content + nav update + flash messages
-            let home = HomeContentPartial { user_id: Some(user_id) };
-            let flash_partial = FlashPartial { flash_messages: vec![flash] };
-
-            let response = format!(
-                r#"{}
-<nav id="main-nav" hx-swap-oob="true">
-    <a href="/">Home</a>
-    <span class="nav-user">Logged in</span>
-    <button hx-post="/logout" hx-target="#main-content" class="nav-logout">Logout</button>
-</nav>
-<div id="flash-messages" hx-swap-oob="true">{}</div>"#,
-                home.render().unwrap(),
-                flash_partial.render().unwrap()
-            );
-            Html(response).into_response()
+            // Return OOB response with updated nav, content, and flash
+            let template = AuthSuccessTemplate {
+                user_id: Some(user_id),
+                flash_messages: vec![FlashMessage::success("Account created successfully! Welcome!")],
+            };
+            Html(template.render().unwrap()).into_response()
         }
         Err(e) => {
             tracing::error!("Failed to create user: {}", e);
@@ -316,22 +282,11 @@ pub async fn logout(
 ) -> Response {
     // Clear user ID from session
     session.1.user_id = None;
-    let flash = FlashMessage::info("You have been logged out.");
 
-    // Return OOB swaps: login form + nav update + flash messages
-    let login = LoginContentPartial { error: None };
-    let flash_partial = FlashPartial { flash_messages: vec![flash] };
-
-    let response = format!(
-        r#"{}
-<nav id="main-nav" hx-swap-oob="true">
-    <a href="/">Home</a>
-    <a href="/login">Login</a>
-    <a href="/register">Register</a>
-</nav>
-<div id="flash-messages" hx-swap-oob="true">{}</div>"#,
-        login.render().unwrap(),
-        flash_partial.render().unwrap()
-    );
-    Html(response).into_response()
+    // Return OOB response with login form, updated nav, and flash
+    let template = LogoutSuccessTemplate {
+        error: None,
+        flash_messages: vec![FlashMessage::info("You have been logged out.")],
+    };
+    Html(template.render().unwrap()).into_response()
 }

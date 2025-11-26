@@ -1,0 +1,12 @@
+{# Response partial for successful login/register - includes OOB swaps #}
+{%- include "partials/home_content.html" %}
+
+<nav id="main-nav" hx-swap-oob="true">
+    <a href="/">Home</a>
+    <span class="nav-user">Logged in</span>
+    <button hx-post="/logout" hx-target="#main-content" class="nav-logout">Logout</button>
+</nav>
+
+<div id="flash-messages" hx-swap-oob="true">
+    {%- include "partials/flash.html" %}
+</div>
